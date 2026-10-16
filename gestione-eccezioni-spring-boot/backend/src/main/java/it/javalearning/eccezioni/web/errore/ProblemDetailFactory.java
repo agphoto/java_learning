@@ -33,10 +33,18 @@ public class ProblemDetailFactory {
 		this.traceIdProvider = traceIdProvider;
 	}
 
-	/** Costruisce il ProblemDetail di un errore applicativo. */
+	/** Costruisce il ProblemDetail di un errore applicativo, nella lingua della richiesta corrente. */
 	public ProblemDetail create(ErrorCode code, Object[] args, HttpServletRequest request) {
+		return create(code, args, request, LocaleContextHolder.getLocale());
+	}
+
+	/**
+	 * Variante con lingua esplicita, per i punti in cui {@link LocaleContextHolder}
+	 * non riflette il LocaleResolver dell'applicazione (i filtri, capitolo 08).
+	 */
+	public ProblemDetail create(ErrorCode code, Object[] args, HttpServletRequest request, Locale locale) {
 		ProblemDetail problem = ProblemDetail.forStatus(code.status());
-		applyCatalog(problem, code, args);
+		applyCatalog(problem, code, args, locale);
 		return enrich(problem, code.name(), request);
 	}
 
@@ -51,7 +59,7 @@ public class ProblemDetailFactory {
 		if (code == null) {
 			return enrich(problem, "HTTP_" + status.value(), request);
 		}
-		applyCatalog(problem, code, new Object[0]);
+		applyCatalog(problem, code, new Object[0], LocaleContextHolder.getLocale());
 		return enrich(problem, code.name(), request);
 	}
 
@@ -67,8 +75,7 @@ public class ProblemDetailFactory {
 		return problem;
 	}
 
-	private void applyCatalog(ProblemDetail problem, ErrorCode code, Object[] args) {
-		Locale locale = LocaleContextHolder.getLocale();
+	private void applyCatalog(ProblemDetail problem, ErrorCode code, Object[] args, Locale locale) {
 		problem.setType(code.type());
 		problem.setTitle(this.messageSource.getMessage(code.messageKey() + ".title", null, locale));
 		problem.setDetail(this.messageSource.getMessage(code.messageKey() + ".detail", args, locale));
