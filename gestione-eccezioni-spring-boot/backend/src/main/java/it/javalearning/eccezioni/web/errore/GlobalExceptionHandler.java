@@ -4,8 +4,6 @@ import it.javalearning.eccezioni.dominio.Book;
 import it.javalearning.eccezioni.errore.ApplicationException;
 import it.javalearning.eccezioni.errore.ErrorCode;
 import jakarta.servlet.http.HttpServletRequest;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Locale;
@@ -40,21 +38,23 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 @RestControllerAdvice(basePackages = "it.javalearning.eccezioni.api")
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
-	private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
-
 	private final ProblemDetailFactory problems;
 
 	private final MessageSource messageSource;
 
-	public GlobalExceptionHandler(ProblemDetailFactory problems, MessageSource messageSource) {
+	private final ErrorLogger errorLogger;
+
+	public GlobalExceptionHandler(ProblemDetailFactory problems, MessageSource messageSource,
+			ErrorLogger errorLogger) {
 		this.problems = problems;
 		this.messageSource = messageSource;
+		this.errorLogger = errorLogger;
 	}
 
 	@ExceptionHandler(ApplicationException.class)
 	ResponseEntity<ProblemDetail> handleApplication(ApplicationException ex, HttpServletRequest request) {
 		ProblemDetail problem = this.problems.create(ex.code(), ex.args(), request);
-		return ResponseEntity.status(problem.getStatus()).body(problem);
+		return respond(problem, ex);
 	}
 
 	/**
@@ -66,7 +66,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 			HttpServletRequest request) {
 		if (violatesConstraint(ex, Book.UK_ISBN)) {
 			ProblemDetail problem = this.problems.create(ErrorCode.DUPLICATE_ISBN, new Object[0], request);
-			return ResponseEntity.status(problem.getStatus()).body(problem);
+			return respond(problem, ex);
 		}
 		return handleUnexpected(ex, request);
 	}
@@ -85,9 +85,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 	/** Rete di sicurezza: qualunque eccezione non prevista diventa un 500 generico. */
 	@ExceptionHandler(Exception.class)
 	ResponseEntity<ProblemDetail> handleUnexpected(Exception ex, HttpServletRequest request) {
-		log.error("Errore inatteso su {}", request.getRequestURI(), ex);
 		ProblemDetail problem = this.problems.create(ErrorCode.INTERNAL_ERROR, new Object[0], request);
-		return ResponseEntity.status(problem.getStatus()).body(problem);
+		return respond(problem, ex);
 	}
 
 	@Override
@@ -98,6 +97,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 				&& request instanceof NativeWebRequest nativeRequest) {
 			HttpServletRequest servletRequest = nativeRequest.getNativeRequest(HttpServletRequest.class);
 			this.problems.fromStandard(problem, ex, statusCode, servletRequest);
+			this.errorLogger.log(problem, ex);
 		}
 		return response;
 	}
@@ -113,7 +113,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 			.map(error -> new FieldErrorItem(error.getField(), error.getCode(),
 					this.messageSource.getMessage(error, locale)))
 			.toList();
-		return validationFailed(errors, request);
+		return validationFailed(errors, ex, request);
 	}
 
 	/** Vincoli sui parametri del metodo: path variable, request param… (capitolo 06). */
@@ -128,13 +128,19 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 				.map(error -> new FieldErrorItem(result.getMethodParameter().getParameterName(), constraintName(error),
 						this.messageSource.getMessage(error, locale))))
 			.toList();
-		return validationFailed(errors, request);
+		return validationFailed(errors, ex, request);
 	}
 
-	private ResponseEntity<Object> validationFailed(List<FieldErrorItem> errors, WebRequest request) {
+	private ResponseEntity<ProblemDetail> respond(ProblemDetail problem, Throwable ex) {
+		this.errorLogger.log(problem, ex);
+		return ResponseEntity.status(problem.getStatus()).body(problem);
+	}
+
+	private ResponseEntity<Object> validationFailed(List<FieldErrorItem> errors, Exception ex, WebRequest request) {
 		HttpServletRequest servletRequest = ((NativeWebRequest) request).getNativeRequest(HttpServletRequest.class);
 		ProblemDetail problem = this.problems.create(ErrorCode.VALIDATION_FAILED, new Object[0], servletRequest);
 		problem.setProperty("errors", errors);
+		this.errorLogger.log(problem, ex);
 		return ResponseEntity.status(problem.getStatus()).body(problem);
 	}
 

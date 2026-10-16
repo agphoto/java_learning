@@ -26,7 +26,7 @@ class ProblemDetailAuthenticationEntryPoint implements AuthenticationEntryPoint 
 	@Override
 	public void commence(HttpServletRequest request, HttpServletResponse response,
 			AuthenticationException authException) throws IOException {
-		this.writer.write(ErrorCode.UNAUTHENTICATED, request, response);
+		this.writer.write(ErrorCode.UNAUTHENTICATED, authException, request, response);
 	}
 
 }

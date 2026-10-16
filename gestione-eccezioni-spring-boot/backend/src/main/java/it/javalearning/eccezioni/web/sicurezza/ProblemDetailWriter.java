@@ -3,6 +3,7 @@ package it.javalearning.eccezioni.web.sicurezza;
 import java.io.IOException;
 
 import it.javalearning.eccezioni.errore.ErrorCode;
+import it.javalearning.eccezioni.web.errore.ErrorLogger;
 import it.javalearning.eccezioni.web.errore.ProblemDetailFactory;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -33,15 +34,21 @@ class ProblemDetailWriter {
 
 	private final LocaleResolver localeResolver;
 
-	ProblemDetailWriter(ProblemDetailFactory problems, JsonMapper jsonMapper, LocaleResolver localeResolver) {
+	private final ErrorLogger errorLogger;
+
+	ProblemDetailWriter(ProblemDetailFactory problems, JsonMapper jsonMapper, LocaleResolver localeResolver,
+			ErrorLogger errorLogger) {
 		this.problems = problems;
+		this.errorLogger = errorLogger;
 		this.localeResolver = localeResolver;
 		this.jsonMapper = jsonMapper;
 	}
 
-	void write(ErrorCode code, HttpServletRequest request, HttpServletResponse response) throws IOException {
+	void write(ErrorCode code, Exception cause, HttpServletRequest request, HttpServletResponse response)
+			throws IOException {
 		ProblemDetail problem = this.problems.create(code, new Object[0], request,
 				this.localeResolver.resolveLocale(request));
+		this.errorLogger.log(problem, cause);
 		response.setStatus(problem.getStatus());
 		response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
 		response.setCharacterEncoding("UTF-8");

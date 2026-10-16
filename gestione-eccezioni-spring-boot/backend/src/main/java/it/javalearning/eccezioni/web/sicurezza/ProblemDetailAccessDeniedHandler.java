@@ -23,7 +23,7 @@ class ProblemDetailAccessDeniedHandler implements AccessDeniedHandler {
 	@Override
 	public void handle(HttpServletRequest request, HttpServletResponse response,
 			AccessDeniedException accessDeniedException) throws IOException {
-		this.writer.write(ErrorCode.ACCESS_DENIED, request, response);
+		this.writer.write(ErrorCode.ACCESS_DENIED, accessDeniedException, request, response);
 	}
 
 }

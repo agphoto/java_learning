@@ -30,9 +30,12 @@ public class RoutingErrorAdvice {
 
 	private final MessageSource messageSource;
 
-	public RoutingErrorAdvice(ProblemDetailFactory problems, MessageSource messageSource) {
+	private final ErrorLogger errorLogger;
+
+	public RoutingErrorAdvice(ProblemDetailFactory problems, MessageSource messageSource, ErrorLogger errorLogger) {
 		this.problems = problems;
 		this.messageSource = messageSource;
+		this.errorLogger = errorLogger;
 	}
 
 	@ExceptionHandler({ NoResourceFoundException.class, HttpRequestMethodNotSupportedException.class })
@@ -40,6 +43,7 @@ public class RoutingErrorAdvice {
 		ErrorResponse error = (ErrorResponse) ex;
 		ProblemDetail problem = error.updateAndGetBody(this.messageSource, LocaleContextHolder.getLocale());
 		this.problems.fromStandard(problem, ex, error.getStatusCode(), request);
+		this.errorLogger.log(problem, ex);
 		return ResponseEntity.status(error.getStatusCode()).headers(error.getHeaders()).body(problem);
 	}
 
