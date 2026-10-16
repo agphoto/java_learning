@@ -1,0 +1,25 @@
+@if (notifier.current(); as problem) {
+  <section class="banner" role="alert" [class.server]="problem.status >= 500">
+    <header>
+      <strong>{{ problem.title }}</strong>
+      <span class="status">{{ problem.status || '—' }}</span>
+      <button type="button" (click)="notifier.clear()">{{ i18n.t('banner.close') }}</button>
+    </header>
+    @if (problem.detail) {
+      <p>{{ problem.detail }}</p>
+    }
+    @if (problem.errors?.length) {
+      <ul>
+        @for (error of problem.errors; track $index) {
+          <li><code>{{ error.field }}</code> {{ error.message }}</li>
+        }
+      </ul>
+    }
+    <footer>
+      <code>{{ problem.code }}</code>
+      @if (problem.traceId) {
+        <span>{{ i18n.t('banner.trace') }}: <code>{{ problem.traceId }}</code></span>
+      }
+    </footer>
+  </section>
+}

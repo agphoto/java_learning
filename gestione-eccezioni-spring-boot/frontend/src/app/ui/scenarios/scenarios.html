@@ -1,0 +1,10 @@
+<h2>{{ i18n.t('scenarios.heading') }}</h2>
+<div class="grid">
+  @for (scenario of scenarios; track scenario.key) {
+    <button type="button" (click)="run(scenario)">{{ i18n.t(scenario.key) }}</button>
+  }
+  <button type="button" class="client" (click)="clientError()">{{ i18n.t('scenarios.clientError') }}</button>
+</div>
+@if (result(); as body) {
+  <p class="ok">{{ i18n.t('scenarios.ok') }}: <code>{{ body }}</code></p>
+}

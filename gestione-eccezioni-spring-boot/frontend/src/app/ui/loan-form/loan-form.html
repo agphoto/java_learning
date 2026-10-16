@@ -1,0 +1,14 @@
+<form [formGroup]="form" (ngSubmit)="submit()">
+  <h2>{{ i18n.t('loan.heading') }}</h2>
+  @for (field of ['userId', 'bookId']; track field) {
+    <label [for]="field">{{ i18n.t('loan.' + field) }}</label>
+    <input [id]="field" type="number" [formControlName]="field" [class.invalid]="fieldErrors()[field]" />
+    @for (error of fieldErrors()[field] ?? []; track error.code) {
+      <p class="field-error" [attr.data-field-error]="field">{{ error.message }}</p>
+    }
+  }
+  <button type="submit">{{ i18n.t('loan.submit') }}</button>
+  @if (success()) {
+    <p class="success">{{ i18n.t('loan.success') }}</p>
+  }
+</form>

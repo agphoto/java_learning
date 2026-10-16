@@ -1,11 +1,16 @@
-import { Component, signal } from '@angular/core';
+import { Component, inject } from '@angular/core';
+import { I18nService } from './core/i18n/i18n.service';
+import { Toolbar } from './ui/toolbar/toolbar';
+import { ErrorBanner } from './ui/error-banner/error-banner';
+import { LoanForm } from './ui/loan-form/loan-form';
+import { Scenarios } from './ui/scenarios/scenarios';
 
 @Component({
-  imports: [],
   selector: 'app-root',
-  styleUrl: './app.css',
+  imports: [Toolbar, ErrorBanner, LoanForm, Scenarios],
   templateUrl: './app.html',
+  styleUrl: './app.css',
 })
 export class App {
-  protected readonly title = signal('frontend');
+  protected readonly i18n = inject(I18nService);
 }

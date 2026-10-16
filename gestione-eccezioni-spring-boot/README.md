@@ -35,4 +35,82 @@ visualizza gli errori in italiano e in inglese.
 
 ## Come si avvia
 
-*(completato con l'app Angular)*
+Requisiti: Java 25, Node 24 (con nvm: il default della macchina può essere un altro).
+
+### 1. Backend (porta 8080)
+
+```bash
+cd backend
+./mvnw spring-boot:run
+```
+
+Il database H2 in memoria viene ricreato a ogni avvio con i dati di `data.sql`:
+
+| Utente | id | Prestiti attivi |
+|---|---|---|
+| Ada | 1 | 0 |
+| Linus | 2 | 3 (libri 4, 5, 6): è al limite |
+
+### 2. Frontend (porta 4200)
+
+```bash
+cd frontend
+nvm use          # legge .nvmrc → Node 24
+npm install
+npm start        # http://localhost:4200, con proxy verso :8080
+```
+
+### 3. Credenziali di prova
+
+| Username | Password | Ruoli |
+|---|---|---|
+| `utente` | `utente` | USER |
+| `admin` | `admin` | USER, ADMIN |
+
+Solo `/api/admin/**` richiede l'autenticazione (HTTP Basic, ruolo ADMIN).
+
+### 4. Ogni errore con `curl`
+
+```bash
+# 404 risorsa inesistente
+curl -s localhost:8080/api/books/999
+# 422 limite di prestiti, in inglese
+curl -s -X POST localhost:8080/api/loans -H 'Content-Type: application/json' \
+     -H 'Accept-Language: en' -d '{"userId":2,"bookId":1}'
+# 409 libro già in prestito
+curl -s -X POST localhost:8080/api/loans -H 'Content-Type: application/json' -d '{"userId":1,"bookId":5}'
+# 409 ISBN duplicato (vincolo del database)
+curl -s -X POST localhost:8080/api/books -H 'Content-Type: application/json' \
+     -d '{"isbn":"9788804668237","title":"Copia","author":"Qualcuno"}'
+# 400 validazione con errori per campo
+curl -s -X POST localhost:8080/api/books -H 'Content-Type: application/json' -d '{"isbn":"123","title":"","author":"X"}'
+# 400 JSON malformato · 400 parametro non numerico · 404 URL inesistente · 405 metodo
+curl -s -X POST localhost:8080/api/loans -H 'Content-Type: application/json' -d '{"userId":'
+curl -s localhost:8080/api/books/abc
+curl -s localhost:8080/api/nonexistent
+curl -si -X DELETE localhost:8080/api/books/1
+# 401 · 403 · 200
+curl -si localhost:8080/api/admin/stats
+curl -s -u utente:utente localhost:8080/api/admin/stats
+curl -s -u admin:admin localhost:8080/api/admin/stats
+# 502 · 503 servizio esterno
+curl -s 'localhost:8080/api/books/1/catalog-info?simulate=error'
+curl -s 'localhost:8080/api/books/1/catalog-info?simulate=unavailable'
+# 500 errore inatteso (con traceId da cercare nei log)
+curl -s localhost:8080/api/diagnostics/unexpected-error
+# Laboratorio: fallback su /error (capitolo 02) e regole degli advice (capitolo 03)
+curl -s localhost:8080/laboratorio/capitolo02/unhandled
+curl -s localhost:8080/laboratorio/capitolo03/state
+```
+
+Aggiungendo `| jq` si ottiene un output leggibile.
+
+### 5. Test
+
+```bash
+cd backend && ./mvnw test                     # backend: JUnit + MockMvcTester
+cd frontend && nvm use && npm test            # frontend: Vitest
+```
+
+Ogni capitolo, nella sezione *Nel progetto*, indica quali test dimostrano i
+comportamenti descritti.

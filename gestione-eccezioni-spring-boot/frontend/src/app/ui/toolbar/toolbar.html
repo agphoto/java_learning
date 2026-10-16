@@ -1,0 +1,16 @@
+<div class="group">
+  <span>{{ i18n.t('toolbar.language') }}</span>
+  @for (lang of langs; track lang) {
+    <button type="button" [class.active]="i18n.lang() === lang" (click)="i18n.setLang(lang)">
+      {{ lang.toUpperCase() }}
+    </button>
+  }
+</div>
+<div class="group">
+  <span>{{ i18n.t('toolbar.credentials') }}</span>
+  @for (user of users; track user) {
+    <button type="button" [class.active]="credentials.current() === user" (click)="credentials.set(user)">
+      {{ i18n.t('credentials.' + user) }}
+    </button>
+  }
+</div>

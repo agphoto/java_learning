@@ -1,1 +1,23 @@
-/* You can add global styles to this file, and also import other style files */
+:root {
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  color: #1d1d1f;
+  background: #fafafa;
+}
+button {
+  font: inherit;
+  cursor: pointer;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid #bbb;
+  border-radius: 4px;
+  background: white;
+}
+button:hover {
+  border-color: #1f4e79;
+}
+code {
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  font-size: 0.85em;
+}
+h2 {
+  font-size: 1.1rem;
+}

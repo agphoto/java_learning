@@ -1,0 +1,29 @@
+form {
+  display: grid;
+  gap: 0.35rem;
+  max-width: 18rem;
+}
+label {
+  margin-top: 0.5rem;
+  font-weight: 600;
+}
+input {
+  padding: 0.4rem;
+  border: 1px solid #bbb;
+  border-radius: 4px;
+}
+input.invalid {
+  border-color: #d9534f;
+}
+.field-error {
+  color: #b52b27;
+  font-size: 0.85rem;
+  margin: 0;
+}
+button {
+  margin-top: 0.75rem;
+  justify-self: start;
+}
+.success {
+  color: #2e7d32;
+}

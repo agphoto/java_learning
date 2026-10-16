@@ -1,0 +1,16 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: 0.5rem;
+}
+button {
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+}
+button.client {
+  border-style: dashed;
+}
+.ok {
+  color: #2e7d32;
+  word-break: break-all;
+}

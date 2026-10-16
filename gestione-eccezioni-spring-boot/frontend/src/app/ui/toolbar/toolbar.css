@@ -1,0 +1,20 @@
+:host {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+.group {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.group span {
+  font-weight: 600;
+  margin-right: 0.25rem;
+}
+button.active {
+  background: #1f4e79;
+  color: white;
+  border-color: #1f4e79;
+}
