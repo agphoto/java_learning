@@ -211,7 +211,7 @@ si affida al vincolo.
 | Test del 409 senza dettagli SQL | `backend/src/test/java/it/javalearning/eccezioni/api/IsbnDuplicatoTest.java` |
 
 ```bash
-curl -s -X POST localhost:8080/api/books -H 'Content-Type: application/json' \
+curl -s -X POST localhost:8081/api/books -H 'Content-Type: application/json' \
      -d '{"isbn":"9788804668237","title":"Copia","author":"Qualcuno"}' | jq
 ```
 

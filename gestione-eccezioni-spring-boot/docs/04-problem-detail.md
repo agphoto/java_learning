@@ -180,8 +180,8 @@ public class ProblemDetailFactory {
 | Contratto verificato | `backend/src/test/java/it/javalearning/eccezioni/web/errore/ProblemDetailContractTest.java` |
 
 ```bash
-curl -s http://localhost:8080/api/books/999 | jq
-curl -s -X POST localhost:8080/api/loans -H 'Content-Type: application/json' \
+curl -s http://localhost:8081/api/books/999 | jq
+curl -s -X POST localhost:8081/api/loans -H 'Content-Type: application/json' \
      -d '{"userId":2,"bookId":1}' | jq
 ```
 

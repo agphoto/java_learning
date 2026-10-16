@@ -13,3 +13,6 @@ dist/
 *.iml
 .vscode/
 .DS_Store
+
+# Strumenti
+.playwright-mcp/

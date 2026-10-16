@@ -162,9 +162,9 @@ catalogo.
 | Test | `backend/src/test/java/it/javalearning/eccezioni/api/ValidazioneTest.java` |
 
 ```bash
-curl -s -X POST localhost:8080/api/books -H 'Content-Type: application/json' \
+curl -s -X POST localhost:8081/api/books -H 'Content-Type: application/json' \
      -d '{"isbn":"123","title":"","author":"X"}' | jq .errors
-curl -s localhost:8080/api/books/0 | jq .errors
+curl -s localhost:8081/api/books/0 | jq .errors
 ```
 
 ## Riferimenti

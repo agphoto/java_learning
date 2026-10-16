@@ -275,12 +275,12 @@ il *nostro* utente non sia autenticato. Propagarlo ingannerebbe il client.
 Credenziali di prova: `utente` / `utente` (ruolo USER), `admin` / `admin` (ruoli USER e ADMIN).
 
 ```bash
-curl -si localhost:8080/api/admin/stats                       # 401, senza WWW-Authenticate
-curl -s  -u utente:utente localhost:8080/api/admin/stats      # 403
-curl -s  -u admin:admin   localhost:8080/api/admin/stats      # 200
-curl -s 'localhost:8080/api/books/1/catalog-info?simulate=error'        # 502
-curl -s 'localhost:8080/api/books/1/catalog-info?simulate=unavailable'  # 503
-curl -s localhost:8080/laboratorio/capitolo08/future                     # gestito dall'advice
+curl -si localhost:8081/api/admin/stats                       # 401, senza WWW-Authenticate
+curl -s  -u utente:utente localhost:8081/api/admin/stats      # 403
+curl -s  -u admin:admin   localhost:8081/api/admin/stats      # 200
+curl -s 'localhost:8081/api/books/1/catalog-info?simulate=error'        # 502
+curl -s 'localhost:8081/api/books/1/catalog-info?simulate=unavailable'  # 503
+curl -s localhost:8081/laboratorio/capitolo08/future                     # gestito dall'advice
 ```
 
 ## Riferimenti

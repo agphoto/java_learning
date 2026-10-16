@@ -84,7 +84,7 @@ Spring Boot mette i due valori nell'**MDC** e il pattern di log di default li mo
 così:
 
 ```
-2026-10-16T12:51:47.387+02:00 ERROR 206437 --- [eccezioni] [main] [6ad201c3c6afc6a8a7b66346332ba264-12e774f973b66c45] i.j.e.web.errore.ErrorLogger : 500 /api/diagnostics/unexpected-error code=INTERNAL_ERROR
+2026-10-16T12:59:26.644+02:00 ERROR 216132 --- [eccezioni] [nio-8081-exec-3] [6ad2038eb464837d4b832637a96843d1-9f16576dbfafe304] i.j.eccezioni.web.errore.ErrorLogger : 500 /api/diagnostics/unexpected-error code=INTERNAL_ERROR
 ```
 
 Il progetto inserisce lo **stesso `traceId`** nel `ProblemDetail`:
@@ -103,7 +103,7 @@ public class TraceIdProvider {
 }
 ```
 
-L'utente vede "codice di traccia `6ad201c3…`" e può citarlo in una segnalazione.
+L'utente vede "codice di traccia `6ad2038e…`" e può citarlo in una segnalazione.
 L'operatore cerca quel valore nei log, o nel sistema di tracing (Zipkin, Jaeger,
 Grafana Tempo), e trova la riga ERROR con lo stack trace e tutti gli span della
 richiesta. Il test verifica che il `traceId` della risposta coincida con quello della
@@ -173,7 +173,7 @@ Il progetto non lo fa, perché non espone metriche, ma è il punto da cui partir
 | Test su traceId e log una sola volta | `backend/src/test/java/it/javalearning/eccezioni/web/errore/TracciamentoTest.java` |
 
 ```bash
-curl -s localhost:8080/api/diagnostics/unexpected-error | jq .traceId
+curl -s localhost:8081/api/diagnostics/unexpected-error | jq .traceId
 # poi cercare quel valore nell'output del backend
 ```
 

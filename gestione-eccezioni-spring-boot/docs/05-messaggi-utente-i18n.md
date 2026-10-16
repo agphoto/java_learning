@@ -192,9 +192,9 @@ inesistente, metodo non supportato) il catalogo `error.*` prevale, così che lo 
 | Test di completezza dei cataloghi | `backend/src/test/java/it/javalearning/eccezioni/web/errore/MessaggiCompletiTest.java` |
 
 ```bash
-curl -s -X POST localhost:8080/api/loans -H 'Content-Type: application/json' \
+curl -s -X POST localhost:8081/api/loans -H 'Content-Type: application/json' \
      -H 'Accept-Language: en-US,en;q=0.9' -d '{"userId":2,"bookId":1}' | jq .title
-curl -s -X POST localhost:8080/api/loans -H 'Content-Type: application/json' \
+curl -s -X POST localhost:8081/api/loans -H 'Content-Type: application/json' \
      -H 'Accept-Language: fr' -d '{"userId":2,"bookId":1}' | jq .title     # italiano
 ```
 

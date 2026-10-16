@@ -229,9 +229,9 @@ con un `ErrorCode` (capitolo 01), lasciando la traduzione in HTTP al solo advice
 | Contratto delle risposte (404, 405, 400, 409, 422, 500) | `backend/src/test/java/it/javalearning/eccezioni/web/errore/ProblemDetailContractTest.java` |
 
 ```bash
-curl -s http://localhost:8080/laboratorio/capitolo03/state      # primo: RuntimeException
-curl -s http://localhost:8080/api/nonexistent                    # 404 problem+json
-curl -si -X DELETE http://localhost:8080/api/books/1             # 405 con header Allow
+curl -s http://localhost:8081/laboratorio/capitolo03/state      # primo: RuntimeException
+curl -s http://localhost:8081/api/nonexistent                    # 404 problem+json
+curl -si -X DELETE http://localhost:8081/api/books/1             # 405 con header Allow
 ```
 
 ## Riferimenti

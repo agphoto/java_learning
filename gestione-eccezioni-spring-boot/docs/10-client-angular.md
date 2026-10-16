@@ -64,8 +64,8 @@ export function toApiProblem(err: HttpErrorResponse, t: (key: string) => string)
   if (isApiProblem(err.error)) {
     return err.error;                                        // testi del server, già localizzati
   }
-  if (err.status === 0) {
-    return clientProblem('NETWORK_ERROR', 0, 'errors.network', t);   // nessuna risposta
+  if (err.status === 0 || GATEWAY_STATUSES.includes(err.status)) {   // [502, 503, 504]
+    return clientProblem('NETWORK_ERROR', err.status, 'errors.network', t);   // backend non raggiungibile
   }
   return clientProblem('UNKNOWN_ERROR', err.status, 'errors.unknown', t); // risposta non conforme
 }
@@ -75,6 +75,18 @@ export function toApiProblem(err: HttpErrorResponse, t: (key: string) => string)
 HTTP**: server spento, rete assente, richiesta bloccata da CORS, timeout. In questi
 casi il client è l'unico che può spiegare cosa è successo, quindi i testi vengono dal
 suo dizionario.
+
+**Un caso scoperto durante la prova nel browser.** In sviluppo le richieste passano
+dal proxy del dev server di Angular. Con il backend spento la risposta **non** è uno
+status 0: è il proxy stesso a rispondere **502**, con un corpo di testo. La prima
+versione del mapper la trattava come `UNKNOWN_ERROR` ("il server ha risposto in modo
+inatteso"), un messaggio fuorviante. Lo stesso accade in produzione dietro un reverse
+proxy o un load balancer, che rispondono 502, 503 o 504 quando l'applicazione non
+risponde. La regola corretta è: **un 502, 503 o 504 senza `ProblemDetail` non l'ha
+prodotto il nostro backend**, e per l'utente equivale a "server non raggiungibile". Un
+503 *con* `ProblemDetail` (per esempio `EXTERNAL_SERVICE_UNAVAILABLE`) resta invece un
+errore del backend, con i suoi testi. Entrambi i casi sono coperti dai test di
+`api-problem.spec.ts`.
 
 `isApiProblem` è una *type guard*: verifica che il corpo abbia `code`, `title` e
 `status` del tipo giusto. Una risposta 502 di un reverse proxy, con un corpo HTML, non
@@ -210,7 +222,7 @@ lazy, plurali, interpolazione).
 
 ### Il proxy di sviluppo
 
-Il dev server di Angular inoltra `/api` e `/laboratorio` a `localhost:8080`
+Il dev server di Angular inoltra `/api` e `/laboratorio` a `localhost:8081`
 (`proxy.conf.json`). Dal punto di vista del browser frontend e backend hanno la stessa
 origine, quindi **non serve CORS**. In produzione lo stesso risultato si ottiene
 servendo l'app e l'API dietro lo stesso reverse proxy.

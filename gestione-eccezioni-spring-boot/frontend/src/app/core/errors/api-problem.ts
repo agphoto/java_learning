@@ -36,6 +36,13 @@ export function isApiProblem(value: unknown): value is ApiProblem {
 }
 
 /**
+ * Stati che un intermediario (proxy di sviluppo, reverse proxy, load balancer) usa
+ * quando il backend non risponde. Senza ProblemDetail nel corpo, non li ha prodotti
+ * il nostro backend: per l'utente equivalgono a "server non raggiungibile".
+ */
+const GATEWAY_STATUSES = [502, 503, 504];
+
+/**
  * Converte un errore HTTP in ApiProblem. Il corpo del backend viene usato così com'è
  * (strada A: i testi sono già nella lingua giusta); il client scrive i propri testi
  * solo quando il server non ha risposto o ha risposto con qualcosa di inatteso.
@@ -44,8 +51,8 @@ export function toApiProblem(err: HttpErrorResponse, t: (key: string) => string)
   if (isApiProblem(err.error)) {
     return err.error;
   }
-  if (err.status === 0) {
-    return clientProblem('NETWORK_ERROR', 0, 'errors.network', t);
+  if (err.status === 0 || GATEWAY_STATUSES.includes(err.status)) {
+    return clientProblem('NETWORK_ERROR', err.status, 'errors.network', t);
   }
   return clientProblem('UNKNOWN_ERROR', err.status, 'errors.unknown', t);
 }

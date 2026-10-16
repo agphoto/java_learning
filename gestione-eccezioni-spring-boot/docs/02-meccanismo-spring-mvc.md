@@ -182,8 +182,8 @@ class FallbackErrorControllerTest {
 Prova manuale, con il backend avviato:
 
 ```bash
-curl -s http://localhost:8080/laboratorio/capitolo02/unhandled
-curl -s -H 'Accept: text/html' http://localhost:8080/laboratorio/capitolo02/unhandled   # Whitelabel
+curl -s http://localhost:8081/laboratorio/capitolo02/unhandled
+curl -s -H 'Accept: text/html' http://localhost:8081/laboratorio/capitolo02/unhandled   # Whitelabel
 ```
 
 ## Riferimenti
