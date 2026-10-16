@@ -87,12 +87,32 @@ Ogni risposta d'errore dell'API ha questa forma:
   "instance": "/api/loans",
   "code": "LOAN_LIMIT_EXCEEDED",
   "traceId": "4bf92f3577b34da6a3ce929d0e0e4736",
-  "timestamp": "2026-10-16T10:15:30Z",
+  "timestamp": "2026-10-16T10:15:30Z"
+}
+```
+
+Per gli errori di validazione si aggiunge `errors`:
+
+```json
+{
+  "type": "https://java-learning.local/errors/validation-failed",
+  "title": "Dati non validi",
+  "status": 400,
+  "detail": "Alcuni campi non sono validi: correggili e riprova.",
+  "instance": "/api/books",
+  "code": "VALIDATION_FAILED",
+  "traceId": "6ad2038e1988274486ece5e040964e23",
+  "timestamp": "2026-10-16T10:59:26.188Z",
   "errors": [
-    { "field": "isbn", "code": "NotBlank", "message": "L'ISBN è obbligatorio" }
+    { "field": "isbn", "code": "Pattern", "message": "L'ISBN deve essere composto da 13 cifre." },
+    { "field": "title", "code": "NotBlank", "message": "Il campo è obbligatorio." }
   ]
 }
 ```
+
+"Ogni risposta" ha un'eccezione che l'applicazione non può controllare: le richieste
+che il container rifiuta prima ancora di eseguire Spring (header troppo grandi,
+caratteri illegali nella request line) ricevono la pagina d'errore di Tomcat.
 
 | Estensione | Perché |
 |---|---|

@@ -89,8 +89,9 @@ errore del backend, con i suoi testi. Entrambi i casi sono coperti dai test di
 `api-problem.spec.ts`.
 
 `isApiProblem` è una *type guard*: verifica che il corpo abbia `code`, `title` e
-`status` del tipo giusto. Una risposta 502 di un reverse proxy, con un corpo HTML, non
-lo supera e diventa `UNKNOWN_ERROR`.
+`status` del tipo giusto. Una pagina d'errore HTML con stato 500 (per esempio quella
+di un proxy) non lo supera e diventa `UNKNOWN_ERROR`. I 502, 503 e 504 senza
+`ProblemDetail` sono il caso discusso sopra e diventano `NETWORK_ERROR`.
 
 ### L'interceptor funzionale
 

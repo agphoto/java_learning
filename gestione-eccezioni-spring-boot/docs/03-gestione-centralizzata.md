@@ -111,8 +111,8 @@ Il gestore centrale del progetto è ristretto a `basePackages =
 l'advice descritto sotto, `GET /api/nonexistent` e `DELETE /api/books/1`
 restituiscono una risposta senza `Content-Type: application/problem+json`.
 
-La soluzione adottata è un **secondo advice, senza selettori e con la precedenza più
-bassa**, che gestisce *solo* queste eccezioni:
+La soluzione adottata è un **secondo advice, senza selettori**, che gestisce *solo*
+queste eccezioni:
 
 ```java
 @RestControllerAdvice
@@ -123,11 +123,22 @@ public class RoutingErrorAdvice {
     ResponseEntity<ProblemDetail> handleRouting(Exception ex, HttpServletRequest request) {
         ErrorResponse error = (ErrorResponse) ex;
         ProblemDetail problem = error.updateAndGetBody(messageSource, LocaleContextHolder.getLocale());
-        problems.enrich(problem, StandardExceptionCodes.codeFor(ex, error.getStatusCode()), request);
+        problems.fromStandard(problem, ex, error.getStatusCode(), request);   // code, testi di catalogo, traceId
+        errorLogger.log(problem, ex);                                          // capitolo 09
         return ResponseEntity.status(error.getStatusCode()).headers(error.getHeaders()).body(problem);
     }
 }
 ```
+
+Che cosa garantisce che i due advice non si pestino i piedi? Non l'`@Order`:
+`GlobalExceptionHandler` non ne dichiara uno, quindi anche lui ha la precedenza più bassa
+e i due sono **alla pari**, proprio la situazione sconsigliata più avanti. Li separano
+gli **ambiti**. Per un errore di routing non c'è un controller, quindi
+`GlobalExceptionHandler` (con `basePackages`) non si applica e risponde solo
+`RoutingErrorAdvice`. Per un errore lanciato da un controller dell'API, invece,
+`RoutingErrorAdvice` non ha un handler adatto, perché gestisce solo i due tipi di
+routing. L'`@Order(LOWEST_PRECEDENCE)` documenta l'intenzione ("ultima rete"), ma oggi
+non decide nulla.
 
 Si noti `headers(error.getHeaders())`: per un 405 l'eccezione porta con sé l'header
 `Allow` (RFC 9110 §15.5.6), che la risposta deve includere.
@@ -145,16 +156,22 @@ eccezioni standard di Spring MVC** (`HttpMessageNotReadableException`,
 `HttpRequestMethodNotSupportedException`, `NoResourceFoundException`,
 `AsyncRequestTimeoutException`…, l'elenco completo è nel Javadoc). Per ognuna:
 
-1. ottiene il `ProblemDetail` di default (quasi tutte implementano `ErrorResponse`);
-2. ne risolve `title` e `detail` tramite il `MessageSource` (capitolo 05);
-3. delega a un metodo `protected handleXxx(...)` sovrascrivibile;
-4. converge su **`handleExceptionInternal(...)`**, il punto unico in cui si può
-   intervenire su tutte le risposte.
+1. il metodo `handleException(...)` riconosce il tipo e chiama il corrispondente
+   `protected handleXxx(...)`, sovrascrivibile (come fa il progetto per la validazione,
+   capitolo 06);
+2. l'implementazione di default di `handleXxx` delega a
+   **`handleExceptionInternal(...)`**, il punto unico in cui si può intervenire su
+   tutte le risposte;
+3. lì, se il corpo non è già stato costruito, si ottiene il `ProblemDetail`
+   dall'eccezione (quasi tutte implementano `ErrorResponse`) e se ne risolvono `title`
+   e `detail` tramite il `MessageSource` (`updateAndGetBody`, capitolo 05);
+4. infine `createResponseEntity(...)` produce la risposta.
 
 Estenderla offre due vantaggi: **copertura completa** (non si dimentica nessuna
 eccezione standard) e **formato uniforme**. Nel progetto l'override di
-`handleExceptionInternal` aggiunge `code`, `timestamp` e `traceId` a ogni
-`ProblemDetail` prodotto da Spring:
+`handleExceptionInternal` completa ogni `ProblemDetail` prodotto da Spring: aggiunge
+`code`, `timestamp` e `traceId`. Per le eccezioni con un codice di catalogo sostituisce
+anche `type`, `title` e `detail` con quelli del catalogo (capitolo 05):
 
 ```java
 @Override
@@ -164,7 +181,8 @@ protected ResponseEntity<Object> handleExceptionInternal(Exception ex, Object bo
     if (response != null && response.getBody() instanceof ProblemDetail problem
             && request instanceof NativeWebRequest nativeRequest) {
         HttpServletRequest servletRequest = nativeRequest.getNativeRequest(HttpServletRequest.class);
-        problems.enrich(problem, StandardExceptionCodes.codeFor(ex, statusCode), servletRequest);
+        problems.fromStandard(problem, ex, statusCode, servletRequest);
+        errorLogger.log(problem, ex);
     }
     return response;
 }
@@ -209,9 +227,12 @@ con un `ErrorCode` (capitolo 01), lasciando la traduzione in HTTP al solo advice
 - **Due advice entrambi applicabili e senza `@Order`**: l'ordine è indefinito e il
   comportamento può cambiare tra un avvio e l'altro, o con l'aggiunta di un bean.
 - **Advice con selettori ed errori di routing**: come visto sopra, non si applicano.
-- **Gestire un'eccezione e rilanciarla.** Un handler che lancia a sua volta
-  un'eccezione non viene ritentato: l'eccezione nuova risale fino al container
-  (`/error`).
+- **Un handler che lancia a sua volta un'eccezione.** `ExceptionHandlerExceptionResolver`
+  la cattura, la registra a livello WARN (`Failure in @ExceptionHandler …`) e restituisce
+  `null`, cioè "non gestita". Prosegue allora l'eccezione **originale**, che passa ai
+  resolver successivi (`ResponseStatusExceptionResolver`,
+  `DefaultHandlerExceptionResolver`) e, se nessuno la gestisce, arriva al container
+  (`/error`). L'eccezione nuova si perde, tranne che in quella riga di log.
 - **Catturare per poi restituire `null`** in un `HandlerExceptionResolver`
   personalizzato significa "non gestita"; restituire un `ModelAndView` vuoto
   significa "gestita, risposta già scritta". Confonderli porta a risposte vuote con

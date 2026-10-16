@@ -57,7 +57,11 @@ class CatalogClientTest {
 	}
 
 	private static void assertNessunDettaglioDellaChiamata(String body) {
-		assertThat(body).doesNotContain("simulated-catalog").doesNotContain("localhost:");
+		assertThat(body).doesNotContain("simulated-catalog")
+			.doesNotContain("localhost:")
+			.doesNotContain("boom")
+			.doesNotContain("Exception")
+			.doesNotContain("maintenance");
 	}
 
 }

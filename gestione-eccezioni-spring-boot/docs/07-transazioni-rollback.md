@@ -127,11 +127,17 @@ La traduzione avviene in due punti:
 - al **commit**: `JpaTransactionManager` traduce le eccezioni sollevate durante il
   flush finale.
 
-Il secondo punto ha una conseguenza pratica. Con `save()` l'INSERT può essere
-rimandato fino al commit. La violazione emerge allora **dal proxy, fuori dal
-metodo di servizio**, che non ha modo di intercettarla. Il progetto usa
-`saveAndFlush()` nella creazione del libro proprio perché la violazione si manifesti
-dentro il servizio, in un punto prevedibile.
+Il secondo punto ha una conseguenza pratica. In generale, con `save()` Hibernate può
+rimandare l'INSERT al flush del commit. La violazione emerge allora **dal proxy, fuori
+dal metodo di servizio**, che non ha modo di intercettarla. `saveAndFlush()` forza
+l'INSERT dentro il metodo, in un punto prevedibile.
+
+Nel caso specifico di `Book` il rinvio non avverrebbe comunque. Con
+`GenerationType.IDENTITY` l'identificativo lo genera il database, quindi Hibernate deve
+eseguire l'INSERT subito, al `persist`, per conoscerlo. `saveAndFlush()` rende
+esplicita un'intenzione che altrimenti dipenderebbe dalla strategia di generazione
+delle chiavi: cambiandola in `SEQUENCE`, che consente il rinvio, il comportamento
+resterebbe lo stesso.
 
 ### Riconoscere il vincolo
 

@@ -59,7 +59,7 @@ Entry point e handler sono componenti minimi che delegano a un writer comune:
 @Override
 public void commence(HttpServletRequest request, HttpServletResponse response,
         AuthenticationException authException) throws IOException {
-    writer.write(ErrorCode.UNAUTHENTICATED, request, response);
+    writer.write(ErrorCode.UNAUTHENTICATED, authException, request, response);
 }
 ```
 
@@ -67,9 +67,11 @@ Il writer usa la stessa `ProblemDetailFactory` dell'API e il `JsonMapper` config
 da Spring Boot, così il JSON è identico a quello prodotto da Spring MVC:
 
 ```java
-void write(ErrorCode code, HttpServletRequest request, HttpServletResponse response) throws IOException {
+void write(ErrorCode code, Exception cause, HttpServletRequest request, HttpServletResponse response)
+        throws IOException {
     ProblemDetail problem = problems.create(code, new Object[0], request,
             localeResolver.resolveLocale(request));
+    errorLogger.log(problem, cause);                      // stessa politica di log (capitolo 09)
     response.setStatus(problem.getStatus());
     response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
     response.setCharacterEncoding("UTF-8");
@@ -117,6 +119,29 @@ controllo. Le alternative conformi sono:
 
 `SicurezzaTest` verifica che l'header sia assente sia senza credenziali sia con
 credenziali errate.
+
+#### Il firewall: richieste rifiutate prima di tutto
+
+Prima ancora della catena di filtri, `FilterChainProxy` passa ogni richiesta allo
+**`StrictHttpFirewall`**, che rifiuta gli URL ambigui o pericolosi: `//`, `;jsessionid=`,
+segmenti codificati come `%2e%2e`, metodi HTTP sconosciuti. Il rifiuto
+(`RequestRejectedException`) non passa né dall'entry point né dagli advice. Di default
+finisce a `/error` e produce un 400 nel formato di `BasicErrorController`, **fuori
+contratto**. Non è un caso raro: un `//` nasce facilmente da una concatenazione di URL
+nel client (`base + '/' + path`).
+
+Il revisore finale del progetto ha trovato proprio questo buco. La correzione è un bean
+`RequestRejectedHandler`, che Spring Security usa al posto del comportamento di default:
+
+```java
+@Bean
+RequestRejectedHandler requestRejectedHandler(ProblemDetailWriter writer) {
+    return (request, response, ex) -> writer.write(ErrorCode.MALFORMED_REQUEST, ex, request, response);
+}
+```
+
+`RichiesteRifiutateTest` lo verifica con un server reale e con `java.net.http.HttpClient`,
+che a differenza di altri client non normalizza l'URL prima di inviarlo.
 
 #### Il dispatch `ERROR` e Security
 
@@ -267,6 +292,7 @@ il *nostro* utente non sia autenticato. Propagarlo ingannerebbe il client.
 | Entry point, access denied handler, writer | `backend/src/main/java/it/javalearning/eccezioni/web/sicurezza/` |
 | Endpoint protetto | `backend/src/main/java/it/javalearning/eccezioni/api/AdminController.java` |
 | Test 401/403, lingua, header | `backend/src/test/java/it/javalearning/eccezioni/web/sicurezza/SicurezzaTest.java` |
+| Test delle richieste rifiutate dal firewall | `backend/src/test/java/it/javalearning/eccezioni/web/sicurezza/RichiesteRifiutateTest.java` |
 | Client e catalogo simulato | `backend/src/main/java/it/javalearning/eccezioni/integrazione/` |
 | Test 502/503 e connessione rifiutata | `backend/src/test/java/it/javalearning/eccezioni/integrazione/CatalogClientTest.java`, `CatalogoIrraggiungibileTest.java` |
 | `@Async` e `CompletableFuture` | `backend/src/main/java/it/javalearning/eccezioni/laboratorio/capitolo08/` |

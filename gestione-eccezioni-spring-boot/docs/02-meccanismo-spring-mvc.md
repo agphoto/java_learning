@@ -109,9 +109,10 @@ Il dispatch verso `/error` è una **nuova richiesta interna** che attraversa di 
 la catena dei filtri registrati per il tipo `ERROR`. Due conseguenze pratiche:
 
 - se Spring Security non permette l'accesso a `/error`, l'utente riceve un **401 al
-  posto dell'errore reale**. Spring Boot autorizza automaticamente i dispatch `ERROR`
-  nella configurazione di default, ma una configurazione personalizzata deve tenerne
-  conto (capitolo 08);
+  posto dell'errore reale**. Da Spring Security 6 le regole di autorizzazione si
+  applicano a **tutti** i tipi di dispatch, `ERROR` compreso. Una configurazione deve
+  quindi permetterlo esplicitamente, oppure permettere tutto ciò che non è protetto
+  come fa il progetto (capitolo 08);
 - nei test con **MockMvc il dispatch `ERROR` non avviene**: MockMvc non è un container.
   Un test che vuole osservare `BasicErrorController` deve usare un server reale.
 

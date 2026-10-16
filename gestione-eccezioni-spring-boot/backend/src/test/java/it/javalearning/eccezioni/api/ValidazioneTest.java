@@ -74,6 +74,15 @@ class ValidazioneTest {
 	}
 
 	@Test
+	void autoreTroppoLungoEUnErroreDiValidazioneNonUn500() {
+		String autoreLungo = "a".repeat(300);
+		var result = postBook("{\"isbn\":\"9780000000001\",\"title\":\"T\",\"author\":\"" + autoreLungo + "\"}", "it");
+
+		assertThat(result).hasStatus(400);
+		assertThat(result).bodyJson().extractingPath("$.errors[?(@.field == 'author')].code").asArray().containsExactly("Size");
+	}
+
+	@Test
 	void corpoDelPrestitoNonValido() {
 		var result = this.mvc.post()
 			.uri("/api/loans")

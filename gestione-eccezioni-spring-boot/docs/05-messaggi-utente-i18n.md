@@ -57,10 +57,15 @@ così come arrivano, e traduce da sé solo gli errori in cui il server non ha ri
 
 ### Da `Accept-Language` a `Locale`
 
-Spring MVC determina la lingua con un **`LocaleResolver`**. Un filtro
-(`RequestContextFilter`) e poi `DispatcherServlet` lo interrogano a ogni richiesta e
-salvano il risultato in `LocaleContextHolder`, un `ThreadLocal` leggibile da
-qualunque punto del codice che gira sullo stesso thread.
+Spring MVC determina la lingua con un **`LocaleResolver`**. È `DispatcherServlet` a
+interrogarlo a ogni richiesta e a salvare il risultato in `LocaleContextHolder`, un
+`ThreadLocal` leggibile da qualunque punto del codice che gira sullo stesso thread.
+
+Prima di `DispatcherServlet`, nei filtri, `LocaleContextHolder` contiene già un valore,
+ma diverso: lo imposta `RequestContextFilter` con `request.getLocale()`, cioè la prima
+lingua dell'header così come la interpreta il container, **senza** il `LocaleResolver`
+dell'applicazione (né le lingue supportate né il default). È la causa di un bug trovato
+nel capitolo 08.
 
 | Implementazione | Fonte della lingua |
 |---|---|
@@ -124,8 +129,8 @@ La `ProblemDetailFactory` le risolve con gli argomenti dell'eccezione e la lingu
 corrente:
 
 ```java
-private void applyCatalog(ProblemDetail problem, ErrorCode code, Object[] args) {
-    Locale locale = LocaleContextHolder.getLocale();
+// locale = LocaleContextHolder.getLocale() negli advice; risolta esplicitamente nei filtri (capitolo 08)
+private void applyCatalog(ProblemDetail problem, ErrorCode code, Object[] args, Locale locale) {
     problem.setType(code.type());
     problem.setTitle(messageSource.getMessage(code.messageKey() + ".title", null, locale));
     problem.setDetail(messageSource.getMessage(code.messageKey() + ".detail", args, locale));

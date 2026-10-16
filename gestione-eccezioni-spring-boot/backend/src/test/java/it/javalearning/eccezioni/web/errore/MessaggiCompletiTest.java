@@ -42,15 +42,34 @@ class MessaggiCompletiTest {
 		}
 	}
 
+	/**
+	 * Il test precedente non basta per l'inglese: una chiave assente da
+	 * messages_en.properties ricadrebbe sul file base (italiano) e passerebbe.
+	 * Qui si leggono i file grezzi.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = { "messages.properties", "messages_en.properties" })
+	void ogniErrorCodeHaLeSueChiaviInOgniFile(String file) throws IOException {
+		Properties props = carica(file);
+		for (ErrorCode code : ErrorCode.values()) {
+			assertThat(props).as(file).containsKeys(code.messageKey() + ".title", code.messageKey() + ".detail");
+		}
+	}
+
+	private static Properties carica(String file) throws IOException {
+		Properties props = new Properties();
+		try (var reader = new InputStreamReader(new ClassPathResource(file).getInputStream(), StandardCharsets.UTF_8)) {
+			props.load(reader);
+		}
+		return props;
+	}
+
 	private static final Pattern APOSTROFO_SINGOLO = Pattern.compile("(?<!')'(?!')");
 
 	@ParameterizedTest
 	@ValueSource(strings = { "messages.properties", "messages_en.properties" })
 	void ogniApostrofoERaddoppiato(String file) throws IOException {
-		Properties props = new Properties();
-		try (var reader = new InputStreamReader(new ClassPathResource(file).getInputStream(), StandardCharsets.UTF_8)) {
-			props.load(reader);
-		}
+		Properties props = carica(file);
 		props.forEach((key, value) -> assertThat(APOSTROFO_SINGOLO.matcher((String) value).find())
 			.as(file + " → " + key + " = " + value)
 			.isFalse());

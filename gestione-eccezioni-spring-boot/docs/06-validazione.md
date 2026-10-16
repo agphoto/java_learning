@@ -65,7 +65,8 @@ public record FieldErrorItem(String field, String code, String message) { }
 
 - `field`: il nome che il client conosce. Per il corpo è la proprietà JSON (`isbn`),
   per un parametro è il nome del parametro (`id`). Quest'ultimo richiede che il codice
-  sia compilato con `-parameters`, cosa che il plugin Maven di Spring Boot fa già;
+  sia compilato con `-parameters`, cosa che `spring-boot-starter-parent` fa già
+configurando il `maven-compiler-plugin`;
 - `code`: il nome semplice del vincolo (`NotBlank`), stabile e mai tradotto;
 - `message`: il testo localizzato.
 
@@ -138,8 +139,11 @@ catalogo.
   libri in prestito" è una regola di dominio: richiede lo stato e va nel servizio
   (`BusinessRuleException`, 422). Mescolarle porta o a validatori che interrogano il
   database o a regole duplicate.
-- **Tipi primitivi nei DTO.** `long userId` con il campo assente nel JSON vale `0`,
-  e `@NotNull` non può accorgersene. Per questo i record usano `Long`.
+- **Tipi primitivi nei DTO.** Un `long` non può valere `null`: un campo assente
+  diventa `0` oppure un errore di deserializzazione (quindi un 400
+  `MALFORMED_REQUEST`, non un errore per campo), a seconda della configurazione di
+  Jackson. In nessuno dei due casi `@NotNull` ha effetto. Per questo i record usano
+  `Long`.
 - **Il client valida già.** È comunque necessario validare lato server: il client
   non è sotto il tuo controllo. Il valore aggiunto del contratto `errors` è che le
   due validazioni possono condividere il `code` del vincolo.
