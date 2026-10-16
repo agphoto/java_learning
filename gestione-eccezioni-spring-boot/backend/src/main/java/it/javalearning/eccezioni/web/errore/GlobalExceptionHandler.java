@@ -6,15 +6,23 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
+import java.util.Locale;
+
+import org.springframework.context.MessageSource;
+import org.springframework.context.MessageSourceResolvable;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.lang.Nullable;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 /**
@@ -32,8 +40,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
 	private final ProblemDetailFactory problems;
 
-	public GlobalExceptionHandler(ProblemDetailFactory problems) {
+	private final MessageSource messageSource;
+
+	public GlobalExceptionHandler(ProblemDetailFactory problems, MessageSource messageSource) {
 		this.problems = problems;
+		this.messageSource = messageSource;
 	}
 
 	@ExceptionHandler(ApplicationException.class)
@@ -60,6 +71,48 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 			this.problems.fromStandard(problem, ex, statusCode, servletRequest);
 		}
 		return response;
+	}
+
+	/** {@code @Valid @RequestBody} non valido (capitolo 06). */
+	@Override
+	protected ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException ex,
+			HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+		Locale locale = LocaleContextHolder.getLocale();
+		List<FieldErrorItem> errors = ex.getBindingResult()
+			.getFieldErrors()
+			.stream()
+			.map(error -> new FieldErrorItem(error.getField(), error.getCode(),
+					this.messageSource.getMessage(error, locale)))
+			.toList();
+		return validationFailed(errors, request);
+	}
+
+	/** Vincoli sui parametri del metodo: path variable, request param… (capitolo 06). */
+	@Override
+	protected ResponseEntity<Object> handleHandlerMethodValidationException(HandlerMethodValidationException ex,
+			HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+		Locale locale = LocaleContextHolder.getLocale();
+		List<FieldErrorItem> errors = ex.getParameterValidationResults()
+			.stream()
+			.flatMap(result -> result.getResolvableErrors()
+				.stream()
+				.map(error -> new FieldErrorItem(result.getMethodParameter().getParameterName(), constraintName(error),
+						this.messageSource.getMessage(error, locale))))
+			.toList();
+		return validationFailed(errors, request);
+	}
+
+	private ResponseEntity<Object> validationFailed(List<FieldErrorItem> errors, WebRequest request) {
+		HttpServletRequest servletRequest = ((NativeWebRequest) request).getNativeRequest(HttpServletRequest.class);
+		ProblemDetail problem = this.problems.create(ErrorCode.VALIDATION_FAILED, new Object[0], servletRequest);
+		problem.setProperty("errors", errors);
+		return ResponseEntity.status(problem.getStatus()).body(problem);
+	}
+
+	/** L'ultimo dei codici di un errore di validazione è il nome semplice del vincolo. */
+	private static String constraintName(MessageSourceResolvable error) {
+		String[] codes = error.getCodes();
+		return (codes != null && codes.length > 0) ? codes[codes.length - 1] : "Invalid";
 	}
 
 }

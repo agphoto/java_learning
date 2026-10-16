@@ -1,4 +1,11 @@
 package it.javalearning.eccezioni.api;
 
-public record BookRequest(String isbn, String title, String author) {
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+
+public record BookRequest(
+		@NotBlank @Pattern(regexp = "\\d{13}") String isbn,
+		@NotBlank @Size(max = 200) String title,
+		@NotBlank String author) {
 }

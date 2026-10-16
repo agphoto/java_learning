@@ -4,6 +4,8 @@ import java.net.URI;
 
 import it.javalearning.eccezioni.dominio.Book;
 import it.javalearning.eccezioni.dominio.BookService;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,12 +26,12 @@ public class BookController {
 	}
 
 	@GetMapping("/{id}")
-	public BookResponse get(@PathVariable long id) {
+	public BookResponse get(@PathVariable @Positive long id) {
 		return BookResponse.from(this.bookService.findById(id));
 	}
 
 	@PostMapping
-	public ResponseEntity<BookResponse> create(@RequestBody BookRequest request) {
+	public ResponseEntity<BookResponse> create(@Valid @RequestBody BookRequest request) {
 		Book book = this.bookService.create(request);
 		return ResponseEntity.created(URI.create("/api/books/" + book.getId())).body(BookResponse.from(book));
 	}
