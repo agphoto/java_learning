@@ -1,5 +1,6 @@
 package it.javalearning.eccezioni.web.errore;
 
+import it.javalearning.eccezioni.dominio.Book;
 import it.javalearning.eccezioni.errore.ApplicationException;
 import it.javalearning.eccezioni.errore.ErrorCode;
 import jakarta.servlet.http.HttpServletRequest;
@@ -9,7 +10,10 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.Locale;
 
+import org.hibernate.exception.ConstraintViolationException;
+
 import org.springframework.context.MessageSource;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.context.MessageSourceResolvable;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpHeaders;
@@ -51,6 +55,31 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 	ResponseEntity<ProblemDetail> handleApplication(ApplicationException ex, HttpServletRequest request) {
 		ProblemDetail problem = this.problems.create(ex.code(), ex.args(), request);
 		return ResponseEntity.status(problem.getStatus()).body(problem);
+	}
+
+	/**
+	 * Violazione di un vincolo del database (capitolo 07). Solo i vincoli noti hanno
+	 * un significato per l'utente; gli altri sono bug e diventano un 500.
+	 */
+	@ExceptionHandler(DataIntegrityViolationException.class)
+	ResponseEntity<ProblemDetail> handleDataIntegrity(DataIntegrityViolationException ex,
+			HttpServletRequest request) {
+		if (violatesConstraint(ex, Book.UK_ISBN)) {
+			ProblemDetail problem = this.problems.create(ErrorCode.DUPLICATE_ISBN, new Object[0], request);
+			return ResponseEntity.status(problem.getStatus()).body(problem);
+		}
+		return handleUnexpected(ex, request);
+	}
+
+	/** Cerca nella catena delle cause il nome del vincolo estratto da Hibernate. */
+	private static boolean violatesConstraint(Throwable ex, String constraintName) {
+		for (Throwable t = ex; t != null; t = t.getCause()) {
+			if (t instanceof ConstraintViolationException cve && cve.getConstraintName() != null
+					&& cve.getConstraintName().toLowerCase(Locale.ROOT).contains(constraintName)) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/** Rete di sicurezza: qualunque eccezione non prevista diventa un 500 generico. */
