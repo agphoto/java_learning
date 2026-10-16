@@ -18,7 +18,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
-import org.springframework.lang.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -31,8 +31,10 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
  * Gestore centrale degli errori dell'API (capitolo 03).
  * <p>
  * Estende {@link ResponseEntityExceptionHandler}, che traduce già le eccezioni
- * standard di Spring MVC in {@link ProblemDetail}; qui si aggiungono le eccezioni
- * applicative e la rete di sicurezza per quelle inattese. L'ambito è limitato al
+ * standard di Spring MVC in {@link ProblemDetail}; qui si aggiungono le
+ * eccezioni
+ * applicative e la rete di sicurezza per quelle inattese. L'ambito è limitato
+ * al
  * package {@code api}: i controller del laboratorio restano fuori.
  */
 @RestControllerAdvice(basePackages = "it.javalearning.eccezioni.api")
@@ -58,7 +60,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 	}
 
 	/**
-	 * Violazione di un vincolo del database (capitolo 07). Solo i vincoli noti hanno
+	 * Violazione di un vincolo del database (capitolo 07). Solo i vincoli noti
+	 * hanno
 	 * un significato per l'utente; gli altri sono bug e diventano un 500.
 	 */
 	@ExceptionHandler(DataIntegrityViolationException.class)
@@ -82,13 +85,24 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 		return false;
 	}
 
-	/** Rete di sicurezza: qualunque eccezione non prevista diventa un 500 generico. */
+	/**
+	 * Rete di sicurezza: qualunque eccezione non prevista diventa un 500 generico.
+	 */
 	@ExceptionHandler(Exception.class)
 	ResponseEntity<ProblemDetail> handleUnexpected(Exception ex, HttpServletRequest request) {
 		ProblemDetail problem = this.problems.create(ErrorCode.INTERNAL_ERROR, new Object[0], request);
 		return respond(problem, ex);
 	}
 
+	/*
+	 * Estenderla offre due vantaggi: copertura completa (non si dimentica nessuna
+	 * eccezione standard) e
+	 * formato uniforme. Nel progetto l'override di handleExceptionInternal completa
+	 * ogni ProblemDetail
+	 * prodotto da Spring: aggiunge code, timestamp e traceId. Per le eccezioni con
+	 * un codice di catalogo
+	 * sostituisce anche type, title e detail con quelli del catalogo (capitolo 05):
+	 */
 	@Override
 	protected ResponseEntity<Object> handleExceptionInternal(Exception ex, @Nullable Object body,
 			HttpHeaders headers, HttpStatusCode statusCode, WebRequest request) {
@@ -108,26 +122,31 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 			HttpHeaders headers, HttpStatusCode status, WebRequest request) {
 		Locale locale = LocaleContextHolder.getLocale();
 		List<FieldErrorItem> errors = ex.getBindingResult()
-			.getFieldErrors()
-			.stream()
-			.map(error -> new FieldErrorItem(error.getField(), error.getCode(),
-					this.messageSource.getMessage(error, locale)))
-			.toList();
+				.getFieldErrors()
+				.stream()
+				.map(error -> new FieldErrorItem(error.getField(), error.getCode(),
+						this.messageSource.getMessage(error, locale)))
+				.toList();
 		return validationFailed(errors, ex, request);
 	}
 
-	/** Vincoli sui parametri del metodo: path variable, request param… (capitolo 06). */
+	/**
+	 * Vincoli sui parametri del metodo: path variable, request param… (capitolo
+	 * 06).
+	 */
+
 	@Override
 	protected ResponseEntity<Object> handleHandlerMethodValidationException(HandlerMethodValidationException ex,
 			HttpHeaders headers, HttpStatusCode status, WebRequest request) {
 		Locale locale = LocaleContextHolder.getLocale();
 		List<FieldErrorItem> errors = ex.getParameterValidationResults()
-			.stream()
-			.flatMap(result -> result.getResolvableErrors()
 				.stream()
-				.map(error -> new FieldErrorItem(result.getMethodParameter().getParameterName(), constraintName(error),
-						this.messageSource.getMessage(error, locale))))
-			.toList();
+				.flatMap(result -> result.getResolvableErrors()
+						.stream()
+						.map(error -> new FieldErrorItem(result.getMethodParameter().getParameterName(),
+								constraintName(error),
+								this.messageSource.getMessage(error, locale))))
+				.toList();
 		return validationFailed(errors, ex, request);
 	}
 
@@ -144,7 +163,10 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 		return ResponseEntity.status(problem.getStatus()).body(problem);
 	}
 
-	/** L'ultimo dei codici di un errore di validazione è il nome semplice del vincolo. */
+	/**
+	 * L'ultimo dei codici di un errore di validazione è il nome semplice del
+	 * vincolo.
+	 */
 	private static String constraintName(MessageSourceResolvable error) {
 		String[] codes = error.getCodes();
 		return (codes != null && codes.length > 0) ? codes[codes.length - 1] : "Invalid";

@@ -3,7 +3,7 @@ package it.javalearning.eccezioni.web.errore;
 import io.micrometer.tracing.Span;
 import io.micrometer.tracing.Tracer;
 
-import org.springframework.lang.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Component;
 
 /**
