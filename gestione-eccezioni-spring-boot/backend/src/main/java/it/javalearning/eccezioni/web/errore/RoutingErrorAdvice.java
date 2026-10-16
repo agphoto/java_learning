@@ -39,7 +39,7 @@ public class RoutingErrorAdvice {
 	ResponseEntity<ProblemDetail> handleRouting(Exception ex, HttpServletRequest request) {
 		ErrorResponse error = (ErrorResponse) ex;
 		ProblemDetail problem = error.updateAndGetBody(this.messageSource, LocaleContextHolder.getLocale());
-		this.problems.enrich(problem, StandardExceptionCodes.codeFor(ex, error.getStatusCode()), request);
+		this.problems.fromStandard(problem, ex, error.getStatusCode(), request);
 		return ResponseEntity.status(error.getStatusCode()).headers(error.getHeaders()).body(problem);
 	}
 

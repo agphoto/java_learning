@@ -57,7 +57,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 		if (response != null && response.getBody() instanceof ProblemDetail problem
 				&& request instanceof NativeWebRequest nativeRequest) {
 			HttpServletRequest servletRequest = nativeRequest.getNativeRequest(HttpServletRequest.class);
-			this.problems.enrich(problem, StandardExceptionCodes.codeFor(ex, statusCode), servletRequest);
+			this.problems.fromStandard(problem, ex, statusCode, servletRequest);
 		}
 		return response;
 	}
