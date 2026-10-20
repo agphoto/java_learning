@@ -129,7 +129,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 		return handleExceptionInternal(ex, problem, headers, HttpStatus.INTERNAL_SERVER_ERROR, request);
 	}
 
-	// 3. Validazione AOP (@Validated su un bean): non è un'eccezione di Spring MVC, quindi
+	// 3. SCONSIGLIATA!!!  Validazione AOP (@Validated su un bean): non è un'eccezione di Spring MVC, quindi
 	// non la conosce ResponseEntityExceptionHandler e senza questo handler sarebbe un 500.
 	@ExceptionHandler(ConstraintViolationException.class)
 	ProblemDetail handleConstraintViolation(ConstraintViolationException ex) {
