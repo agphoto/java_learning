@@ -1,0 +1,62 @@
+<main>
+  <h1>Libri</h1>
+
+  <!-- ECCEZIONI: riquadro con l'ultimo errore del backend. -->
+  @if (error(); as problem) {
+    <section class="error" role="alert">
+      <strong>{{ problem.status }} {{ problem.title }}</strong>
+      @if (problem.detail) {
+        <p>{{ problem.detail }}</p>
+      }
+      @for (fieldError of problem.errors ?? []; track fieldError.field) {
+        <p>{{ fieldError.field }}: {{ fieldError.message }}</p>
+      }
+    </section>
+  }
+
+  <table>
+    <thead>
+      <tr>
+        <th>Id</th>
+        <th>ISBN</th>
+        <th>Titolo</th>
+        <th>Autore</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (book of books(); track book.id) {
+        <tr>
+          <td>{{ book.id }}</td>
+          <td>{{ book.isbn }}</td>
+          <td>{{ book.title }}</td>
+          <td>{{ book.author }}</td>
+          <td>
+            <button type="button" (click)="edit(book)">Modifica</button>
+            <button type="button" (click)="remove(book)">Elimina</button>
+          </td>
+        </tr>
+      } @empty {
+        <tr>
+          <td colspan="5">Nessun libro</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+
+  <h2>{{ editingId() === null ? 'Nuovo libro' : 'Modifica libro ' + editingId() }}</h2>
+  <form [formGroup]="form" (ngSubmit)="save()">
+    <label>ISBN <input formControlName="isbn" placeholder="13 cifre" /></label>
+    <label>Titolo <input formControlName="title" /></label>
+    <label>Autore <input formControlName="author" /></label>
+    <div>
+      <button type="submit" [disabled]="form.invalid">Salva</button>
+      @if (editingId() !== null) {
+        <button type="button" (click)="cancel()">Annulla</button>
+      }
+    </div>
+  </form>
+
+  <h2>Provocare errori</h2>
+  <button type="button" (click)="loadMissing()">GET /api/books/999</button>
+</main>

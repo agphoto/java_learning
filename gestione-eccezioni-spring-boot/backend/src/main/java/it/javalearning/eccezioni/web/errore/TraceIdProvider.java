@@ -19,8 +19,8 @@ public class TraceIdProvider {
 		this.tracer = tracer;
 	}
 
-	@Nullable
-	public String currentTraceId() {
+	
+	public @Nullable String currentTraceId() {
 		Span span = this.tracer.currentSpan();
 		return (span != null) ? span.context().traceId() : null;
 	}

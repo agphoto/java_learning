@@ -24,6 +24,9 @@ visualizza gli errori in italiano e in inglese.
 9. [Logging e observability](docs/09-logging-observability.md)
 10. [Il client Angular](docs/10-client-angular.md)
 
+In sintesi visiva: [il percorso di un errore](docs/infografica-percorso-errore.html), un'infografica
+che segue un errore dal service Spring al riquadro Angular (da aprire nel browser).
+
 ## Struttura
 
 | Cartella | Contenuto |
@@ -32,6 +35,7 @@ visualizza gli errori in italiano e in inglese.
 | `backend/` | API Spring Boot (Java 25, Maven) |
 | `frontend/` | app Angular 22 |
 | `_progetto/` | design e piano di implementazione |
+| `basic/` | [progetto d'esercizio](basic/README.md): CRUD minimo con la gestione degli errori da implementare (porta 8082) |
 
 ## Come si avvia
 

@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Il percorso di un errore</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..125,500..800&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: due corsie (backend / GUI) unite da un "filo" HTTP; al centro il contratto ProblemDetail. */
+:root {
+  --bg: #f5f6f8;
+  --surface: #ffffff;
+  --ink: #18202b;
+  --muted: #5b6573;
+  --line: #d9dee6;
+  --be: #0f7a5c;          /* corsia backend */
+  --be-soft: #e3f3ed;
+  --fe: #3d4fc4;          /* corsia GUI */
+  --fe-soft: #e8ebfb;
+  --err: #c2410c;         /* stati d'errore */
+  --err-soft: #fdeee4;
+  --code-bg: #eef1f5;
+  --code-ink: #1d2733;
+  --code-c: #6b7684;
+  --f-display: "Archivo", "Arial Narrow", system-ui, sans-serif;
+  --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11151b; --surface: #181e26; --ink: #e6eaf0; --muted: #9aa5b4; --line: #2b3440;
+    --be: #3fc79b; --be-soft: #13302a; --fe: #8e9bff; --fe-soft: #1e2347;
+    --err: #ff8a4c; --err-soft: #3a2116; --code-bg: #0d1117; --code-ink: #dbe2ea; --code-c: #7d8896;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11151b; --surface: #181e26; --ink: #e6eaf0; --muted: #9aa5b4; --line: #2b3440;
+  --be: #3fc79b; --be-soft: #13302a; --fe: #8e9bff; --fe-soft: #1e2347;
+  --err: #ff8a4c; --err-soft: #3a2116; --code-bg: #0d1117; --code-ink: #dbe2ea; --code-c: #7d8896;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--f-body); font-size: 16px; line-height: 1.55;
+}
+.wrap {
+  max-width: 72rem; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 2.5rem 4rem;
+  display: grid; gap: 3.5rem;
+}
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; line-height: 1.1; }
+h1 { font-size: clamp(2.2rem, 6vw, 4rem); font-weight: 800; font-stretch: 78%; letter-spacing: -0.01em; }
+h2 { font-size: clamp(1.5rem, 3.4vw, 2.1rem); font-weight: 750; font-stretch: 85%; }
+h3 { font-size: 1.12rem; font-weight: 700; font-stretch: 95%; }
+p { margin: 0; }
+code, pre { font-family: var(--f-mono); font-size: 0.86em; }
+p code, li code, td code { background: var(--code-bg); padding: 0.05em 0.35em; border-radius: 4px; }
+.eyebrow {
+  font-family: var(--f-mono); font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--muted);
+}
+.lede { max-width: 62ch; color: var(--muted); font-size: 1.08rem; }
+section { display: grid; gap: 1.25rem; }
+.sec-head { display: grid; gap: 0.5rem; }
+
+/* ---------- Hero: il filo ---------- */
+.hero { display: grid; gap: 1.25rem; }
+.flow {
+  list-style: none; margin: 0.75rem 0 0; padding: 0;
+  display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 0;
+  position: relative;
+}
+.flow li { position: relative; display: grid; gap: 0.35rem; padding: 0.9rem 0.6rem 0.9rem 0.7rem; min-width: 0; }
+.flow li::after {
+  content: ""; position: absolute; right: -6px; top: 1.35rem; width: 12px; height: 12px;
+  border-top: 2px solid var(--line); border-right: 2px solid var(--line); transform: rotate(45deg); z-index: 1;
+}
+.flow li:last-child::after { display: none; }
+.flow .who { font-family: var(--f-mono); font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; }
+.flow .what { font-family: var(--f-display); font-weight: 700; font-stretch: 88%; font-size: 0.98rem; line-height: 1.2; overflow-wrap: anywhere; }
+.flow .how { font-size: 0.8rem; color: var(--muted); line-height: 1.35; }
+.flow .be { background: var(--be-soft); border-top: 4px solid var(--be); }
+.flow .be .who { color: var(--be); }
+.flow .fe { background: var(--fe-soft); border-top: 4px solid var(--fe); }
+.flow .fe .who { color: var(--fe); }
+.flow .wire { background: var(--err-soft); border-top: 4px solid var(--err); }
+.flow .wire .who { color: var(--err); }
+.flow .wire .what { font-family: var(--f-mono); font-size: 0.9rem; }
+
+.pillars { display: grid; grid-template-columns: 1fr 1.1fr 1fr; gap: 1rem; }
+.pillar { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 1.1rem 1.2rem; display: grid; gap: 0.4rem; align-content: start; min-width: 0; }
+.pillar .tag { font-family: var(--f-mono); font-size: 0.72rem; letter-spacing: 0.07em; text-transform: uppercase; }
+.pillar.be .tag { color: var(--be); }
+.pillar.fe .tag { color: var(--fe); }
+.pillar.ct .tag { color: var(--err); }
+.pillar.ct { border-color: var(--err); }
+.pillar p { color: var(--muted); font-size: 0.93rem; }
+
+/* ---------- Passi ---------- */
+.lane-title { display: flex; align-items: baseline; gap: 0.75rem; flex-wrap: wrap; }
+.lane-chip {
+  font-family: var(--f-mono); font-size: 0.72rem; letter-spacing: 0.07em; text-transform: uppercase;
+  padding: 0.2rem 0.55rem; border-radius: 999px; color: var(--surface);
+}
+.lane-chip.be { background: var(--be); }
+.lane-chip.fe { background: var(--fe); }
+.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 1rem; counter-reset: step; }
+.step {
+  display: grid; grid-template-columns: 3rem minmax(0, 1fr) minmax(0, 1.25fr); gap: 1rem 1.5rem;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 1.2rem;
+  counter-increment: step;
+}
+.step::before {
+  content: counter(step); font-family: var(--f-display); font-weight: 800; font-stretch: 75%;
+  font-size: 2.4rem; line-height: 1;
+}
+.be-steps .step::before { color: var(--be); }
+.fe-steps .step::before { color: var(--fe); }
+.step .txt { display: grid; gap: 0.45rem; align-content: start; min-width: 0; }
+.step .txt p, .step .txt li { font-size: 0.94rem; }
+.step .txt ul { margin: 0; padding-left: 1.1rem; display: grid; gap: 0.25rem; }
+.step .file { font-family: var(--f-mono); font-size: 0.74rem; color: var(--muted); overflow-wrap: anywhere; }
+pre {
+  margin: 0; background: var(--code-bg); color: var(--code-ink); border-radius: 8px;
+  padding: 0.9rem 1rem; overflow-x: auto; line-height: 1.5; min-width: 0; tab-size: 4;
+}
+pre .c { color: var(--code-c); font-style: italic; }
+pre .k { color: var(--be); font-weight: 600; }
+.fe-steps pre .k { color: var(--fe); }
+pre .s { color: var(--err); }
+
+/* ---------- Contratto ---------- */
+.contract { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.5rem; align-items: start; }
+.contract pre { font-size: 0.95rem; border-left: 4px solid var(--err); }
+.readers { display: grid; gap: 0.6rem; }
+.reader { display: grid; grid-template-columns: 6.5rem minmax(0, 1fr); gap: 0.75rem; align-items: baseline; padding-bottom: 0.6rem; border-bottom: 1px solid var(--line); }
+.reader:last-child { border-bottom: 0; }
+.reader b { font-family: var(--f-mono); font-weight: 600; font-size: 0.88rem; }
+.reader span { font-size: 0.92rem; color: var(--muted); }
+.reader em { font-style: normal; font-family: var(--f-mono); font-size: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase; padding: 0.05rem 0.4rem; border-radius: 4px; margin-right: 0.35rem; }
+.reader em.m { background: var(--be-soft); color: var(--be); }
+.reader em.p { background: var(--fe-soft); color: var(--fe); }
+.rule { background: var(--err-soft); border-radius: 8px; padding: 0.8rem 1rem; font-size: 0.94rem; }
+.rule strong { color: var(--err); }
+
+/* ---------- Mappa ---------- */
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; min-width: 46rem; font-size: 0.9rem; }
+th, td { text-align: left; padding: 0.65rem 0.85rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-family: var(--f-mono); font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+tr:last-child td { border-bottom: 0; }
+.st {
+  display: inline-block; font-family: var(--f-mono); font-weight: 600; font-variant-numeric: tabular-nums;
+  padding: 0.1rem 0.45rem; border-radius: 4px; background: var(--err-soft); color: var(--err);
+}
+.origin { font-family: var(--f-mono); font-size: 0.7rem; letter-spacing: 0.04em; text-transform: uppercase; }
+.origin.own { color: var(--be); }
+.origin.inh { color: var(--muted); }
+.origin.cli { color: var(--fe); }
+
+/* ---------- Insidie ---------- */
+.traps { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.trap { border-left: 3px solid var(--err); padding: 0.2rem 0 0.2rem 1rem; display: grid; gap: 0.3rem; min-width: 0; }
+.trap p { color: var(--muted); font-size: 0.93rem; }
+footer { color: var(--muted); font-size: 0.85rem; border-top: 1px solid var(--line); padding-top: 1rem; }
+
+@media (max-width: 960px) {
+  .flow { grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 0.75rem; }
+  .flow li:nth-child(3n)::after { display: none; }
+  .step { grid-template-columns: 2.5rem minmax(0, 1fr); }
+  .step pre { grid-column: 1 / -1; }
+  .contract { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 640px) {
+  .flow { grid-template-columns: minmax(0, 1fr); row-gap: 0; }
+  .flow li { padding-left: 1rem; }
+  .flow li::after, .flow li:nth-child(3n)::after {
+    display: block; right: auto; left: 1.2rem; top: auto; bottom: -6px; transform: rotate(135deg);
+  }
+  .flow li:last-child::after { display: none; }
+  .pillars, .traps { grid-template-columns: minmax(0, 1fr); }
+  .reader { grid-template-columns: minmax(0, 1fr); gap: 0.15rem; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .flow li { transition: transform 0.15s ease; }
+  .flow li:hover { transform: translateY(-2px); }
+}
+</style>
+<style>body { margin: 0; }</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <header class="hero">
+    <span class="eyebrow">Gestione centralizzata delle eccezioni · Spring Boot 4.1 · Angular 22</span>
+    <h1>Il percorso di un errore</h1>
+    <p class="lede">Quando il service lancia <code>BookNotFoundException</code>, nessun controller e nessun componente la gestiscono da soli. L'eccezione attraversa un punto unico per lato: l'advice sul backend e l'interceptor sulla GUI. In mezzo viaggia un contratto: il <code>ProblemDetail</code> della RFC 9457.</p>
+
+    <ol class="flow" aria-label="Percorso di GET /api/books/999">
+      <li class="be"><span class="who">Service</span><span class="what">throw BookNotFoundException(999)</span><span class="how">il dominio non sa nulla di HTTP</span></li>
+      <li class="be"><span class="who">Controller</span><span class="what">nessun try/catch</span><span class="how">l'eccezione risale</span></li>
+      <li class="be"><span class="who">DispatcherServlet</span><span class="what">ExceptionHandler&shy;ExceptionResolver</span><span class="how">cerca un @ExceptionHandler</span></li>
+      <li class="be"><span class="who">Advice</span><span class="what">GlobalException&shy;Handler</span><span class="how">eccezione → stato + ProblemDetail</span></li>
+      <li class="wire"><span class="who">HTTP</span><span class="what">404 application/ problem+json</span><span class="how">il contratto sul filo</span></li>
+      <li class="fe"><span class="who">HttpClient</span><span class="what">HttpErrorResponse</span><span class="how">tipo generico di Angular</span></li>
+      <li class="fe"><span class="who">Interceptor</span><span class="what">errorInterceptor</span><span class="how">HttpErrorResponse → ProblemDetail</span></li>
+      <li class="fe"><span class="who">Componente</span><span class="what">error: p =&gt; error.set(p)</span><span class="how">un signal, nessun parsing</span></li>
+      <li class="fe"><span class="who">Template</span><span class="what">@if (error(); as problem)</span><span class="how">riquadro role="alert"</span></li>
+    </ol>
+  </header>
+
+  <section aria-labelledby="h-principio">
+    <div class="sec-head">
+      <span class="eyebrow">Il principio</span>
+      <h2 id="h-principio">Un punto unico per lato, un contratto in mezzo</h2>
+    </div>
+    <div class="pillars">
+      <div class="pillar be">
+        <span class="tag">Backend</span>
+        <h3>@RestControllerAdvice</h3>
+        <p>Traduce ogni eccezione in una risposta. Controller e service si limitano a lanciare: nessun <code>try/catch</code> e nessun <code>ResponseEntity</code> d'errore costruito a mano.</p>
+      </div>
+      <div class="pillar ct">
+        <span class="tag">Contratto</span>
+        <h3>ProblemDetail · RFC 9457</h3>
+        <p>Una sola forma per tutti gli errori: <code>type</code>, <code>title</code>, <code>status</code>, <code>detail</code>, <code>instance</code> e le estensioni. È l'unica cosa che i due lati condividono.</p>
+      </div>
+      <div class="pillar fe">
+        <span class="tag">GUI</span>
+        <h3>HttpInterceptorFn</h3>
+        <p>Converte ogni <code>HttpErrorResponse</code> in un <code>ProblemDetail</code> tipizzato, compresi i casi in cui il backend non ha risposto. I componenti ricevono sempre la stessa forma.</p>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-backend">
+    <div class="sec-head">
+      <div class="lane-title"><span class="lane-chip be">Backend</span><span class="eyebrow">5 passi</span></div>
+      <h2 id="h-backend">Dall'eccezione alla risposta</h2>
+    </div>
+    <ol class="steps be-steps">
+      <li class="step">
+        <div class="txt">
+          <h3>Eccezioni di dominio, unchecked</h3>
+          <p>Ogni eccezione ha un nome che dice cosa è successo e porta con sé i dati dell'occorrenza (l'id, l'ISBN). Non dichiara stati HTTP: lo strato web penserà alla traduzione.</p>
+          <span class="file">errore/BookNotFoundException.java · DuplicateIsbnException.java</span>
+        </div>
+<pre><span class="k">public class</span> BookNotFoundException
+        <span class="k">extends</span> RuntimeException {
+
+    <span class="k">private final long</span> bookId;
+
+    <span class="k">public</span> BookNotFoundException(<span class="k">long</span> bookId) {
+        <span class="k">super</span>(<span class="s">"Libro " + bookId + " inesistente"</span>);
+        <span class="k">this</span>.bookId = bookId;
+    }
+
+    <span class="k">public long</span> getBookId() { <span class="k">return</span> bookId; }
+}</pre>
+      </li>
+      <li class="step">
+        <div class="txt">
+          <h3>Il service lancia, il controller non fa niente</h3>
+          <p>Il service verifica la regola e lancia. Il controller resta quello del caso di successo: nessun <code>try/catch</code> e nessun <code>if</code> sull'esito.</p>
+          <span class="file">libro/BookService.java</span>
+        </div>
+<pre><span class="k">public</span> Book findById(<span class="k">long</span> id) {
+    <span class="k">return</span> repository.findById(id)
+        .orElseThrow(() -&gt; <span class="k">new</span> BookNotFoundException(id));
+}
+
+<span class="k">@Transactional</span>
+<span class="k">public</span> Book create(BookRequest request) {
+    <span class="k">if</span> (repository.existsByIsbn(request.isbn())) {
+        <span class="k">throw new</span> DuplicateIsbnException(request.isbn());
+    }
+    <span class="k">return</span> repository.save(...);
+}</pre>
+      </li>
+      <li class="step">
+        <div class="txt">
+          <h3>Un advice che estende ResponseEntityExceptionHandler</h3>
+          <p>Estendendo la classe base erediti il ProblemDetail per tutte le eccezioni standard di Spring MVC: JSON malformato, tipo sbagliato nel path, 405, 404 di routing.</p>
+          <ul>
+            <li>Con questo advice <code>spring.mvc.problemdetails.enabled</code> diventa ininfluente: l'handler di Boot è <code>@ConditionalOnMissingBean</code>.</li>
+            <li>Un metodo per ogni eccezione di dominio, che restituisce <code>ProblemDetail</code>. Spring ne ricava lo stato e il Content-Type e aggiunge <code>instance</code>.</li>
+          </ul>
+          <span class="file">errore/GlobalExceptionHandler.java</span>
+        </div>
+<pre><span class="k">@RestControllerAdvice</span>
+<span class="k">public class</span> GlobalExceptionHandler
+        <span class="k">extends</span> ResponseEntityExceptionHandler {
+
+    <span class="k">@ExceptionHandler</span>(BookNotFoundException.<span class="k">class</span>)
+    ProblemDetail handleNotFound(BookNotFoundException ex) {
+        ProblemDetail p = ProblemDetail.forStatusAndDetail(
+            HttpStatus.NOT_FOUND, ex.getMessage());
+        p.setType(URI.create(<span class="s">"https://java-learning.local/errors/book-not-found"</span>));
+        p.setTitle(<span class="s">"Libro inesistente"</span>);
+        p.setProperty(<span class="s">"code"</span>, <span class="s">"BOOK_NOT_FOUND"</span>);
+        p.setProperty(<span class="s">"bookId"</span>, ex.getBookId());
+        <span class="k">return</span> p;
+    }
+
+    <span class="k">@ExceptionHandler</span>(DuplicateIsbnException.<span class="k">class</span>)
+    ProblemDetail handleDuplicateIsbn(DuplicateIsbnException ex) { <span class="c">/* 409 */</span> }
+}</pre>
+      </li>
+      <li class="step">
+        <div class="txt">
+          <h3>Validazione: override, non @ExceptionHandler</h3>
+          <p><code>MethodArgumentNotValidException</code> è già gestita dalla classe base. Un secondo <code>@ExceptionHandler</code> per la stessa eccezione renderebbe ambiguo il mapping e l'applicazione non partirebbe. Si fa l'override del metodo e si aggiunge l'estensione <code>errors</code>.</p>
+        </div>
+<pre><span class="k">@Override</span>
+<span class="k">protected</span> ResponseEntity&lt;Object&gt; handleMethodArgumentNotValid(
+        MethodArgumentNotValidException ex, HttpHeaders headers,
+        HttpStatusCode status, WebRequest request) {
+    ProblemDetail problem = ex.getBody();
+    problem.setProperty(<span class="s">"errors"</span>, ex.getBindingResult()
+        .getFieldErrors().stream()
+        .map(e -&gt; Map.of(<span class="s">"field"</span>, e.getField(),
+                         <span class="s">"message"</span>, String.valueOf(e.getDefaultMessage())))
+        .toList());
+    <span class="k">return</span> handleExceptionInternal(ex, problem, headers, status, request);
+}</pre>
+      </li>
+      <li class="step">
+        <div class="txt">
+          <h3>Due reti di sicurezza</h3>
+          <ul>
+            <li><b>Vincolo del database</b>: <code>DataIntegrityViolationException</code> diventa 409. Copre ciò che il controllo applicativo non vede, cioè l'update e le richieste concorrenti.</li>
+            <li><b>Ultima istanza</b>: <code>Exception</code> diventa 500 con un testo generico. Lo stack trace va nel log e non arriva mai al client (CWE-209).</li>
+          </ul>
+          <p>Per le eccezioni MVC il resolver sceglie sempre l'handler più specifico, quindi <code>Exception.class</code> non le intercetta.</p>
+        </div>
+<pre><span class="k">@ExceptionHandler</span>(DataIntegrityViolationException.<span class="k">class</span>)
+ProblemDetail handleDataIntegrity(DataIntegrityViolationException ex) {
+    <span class="k">return</span> ProblemDetail.forStatusAndDetail(
+        HttpStatus.CONFLICT, <span class="s">"Dati in conflitto"</span>);  <span class="c">// mai ex.getMessage()</span>
+}
+
+<span class="k">@ExceptionHandler</span>(Exception.<span class="k">class</span>)
+ProblemDetail handleUnexpected(Exception ex) {
+    logger.error(<span class="s">"Errore inatteso"</span>, ex);           <span class="c">// ereditato</span>
+    <span class="k">return</span> ProblemDetail.forStatusAndDetail(
+        HttpStatus.INTERNAL_SERVER_ERROR, <span class="s">"Errore inatteso"</span>);
+}</pre>
+      </li>
+    </ol>
+  </section>
+
+  <section aria-labelledby="h-contratto">
+    <div class="sec-head">
+      <span class="eyebrow">Sul filo · application/problem+json</span>
+      <h2 id="h-contratto">Il contratto, e chi legge cosa</h2>
+    </div>
+    <div class="contract">
+<pre>{
+  <span class="s">"type"</span>:     "https://java-learning.local/errors/book-not-found",
+  <span class="s">"title"</span>:    "Libro inesistente",
+  <span class="s">"status"</span>:   404,
+  <span class="s">"detail"</span>:   "Libro 999 inesistente",
+  <span class="s">"instance"</span>: "/api/books/999",
+  <span class="s">"code"</span>:     "BOOK_NOT_FOUND",
+  <span class="s">"bookId"</span>:   999
+}
+
+<span class="c">// validazione: estensione errors</span>
+{
+  <span class="s">"status"</span>: 400,
+  <span class="s">"title"</span>:  "Bad Request",
+  <span class="s">"detail"</span>: "Invalid request content.",
+  <span class="s">"errors"</span>: [
+    { "field": "isbn",  "message": "..." },
+    { "field": "title", "message": "..." }
+  ]
+}</pre>
+      <div class="readers">
+        <div class="reader"><b>type</b><span><em class="m">macchina</em>URI stabile, uno per significato: è la chiave dell'errore. Se manca, vale <code>about:blank</code>, cioè "basta lo stato".</span></div>
+        <div class="reader"><b>title</b><span><em class="p">persona</em>Fisso per un dato <code>type</code>. Cambia solo con la lingua.</span></div>
+        <div class="reader"><b>status</b><span><em class="m">macchina</em>Ripete lo stato HTTP, utile quando la risposta passa da un proxy.</span></div>
+        <div class="reader"><b>detail</b><span><em class="p">persona</em>Descrive questa occorrenza. Il client non deve interpretarlo.</span></div>
+        <div class="reader"><b>instance</b><span><em class="m">diagnosi</em>Quale richiesta. Spring lo valorizza con il path se lo lasci vuoto.</span></div>
+        <div class="reader"><b>estensioni</b><span><em class="m">macchina</em><code>code</code>, <code>bookId</code>, <code>errors</code>, <code>traceId</code>: i dati su cui il client decide.</span></div>
+        <p class="rule"><strong>Regola d'oro.</strong> Tutto ciò su cui la GUI prende decisioni sta in <code>type</code> o in un'estensione, mai in <code>detail</code>.</p>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-gui">
+    <div class="sec-head">
+      <div class="lane-title"><span class="lane-chip fe">GUI</span><span class="eyebrow">4 passi</span></div>
+      <h2 id="h-gui">Dalla risposta al riquadro</h2>
+    </div>
+    <ol class="steps fe-steps">
+      <li class="step">
+        <div class="txt">
+          <h3>Il tipo condiviso</h3>
+          <p>Un'interfaccia TypeScript che rispecchia il contratto. Mettila accanto all'interceptor, che è l'unico punto in cui la si costruisce.</p>
+          <span class="file">src/app/error.interceptor.ts</span>
+        </div>
+<pre><span class="k">export interface</span> ProblemDetail {
+  type?: string;
+  title?: string;
+  status: number;
+  detail?: string;
+  instance?: string;
+  code?: string;
+  errors?: { field: string; message: string }[];
+}</pre>
+      </li>
+      <li class="step">
+        <div class="txt">
+          <h3>Un interceptor funzionale</h3>
+          <p>Intercetta ogni <code>HttpErrorResponse</code> e la rilancia come <code>ProblemDetail</code>. Deve coprire anche le risposte che non vengono dal tuo backend:</p>
+          <ul>
+            <li><b>status 0</b>: rete assente o backend spento, nessun corpo da leggere;</li>
+            <li><b>corpo non JSON</b>: un 502 o 504 del proxy arriva come testo o HTML, e lo spread di una stringa produrrebbe le chiavi <code>0</code>, <code>1</code>, <code>2</code>… Controlla <code>typeof</code>.</li>
+          </ul>
+        </div>
+<pre><span class="k">export const</span> errorInterceptor: HttpInterceptorFn = (req, next) =&gt;
+  next(req).pipe(
+    catchError((error: HttpErrorResponse) =&gt; {
+      <span class="k">const</span> body = <span class="k">typeof</span> error.error === <span class="s">'object'</span> ? error.error : {};
+      <span class="k">const</span> problem: ProblemDetail =
+        error.status === 0
+          ? { status: 0, title: <span class="s">'Server non raggiungibile'</span> }
+          : { status: error.status, title: error.statusText, ...body };
+      <span class="k">return</span> throwError(() =&gt; problem);
+    }),
+  );</pre>
+      </li>
+      <li class="step">
+        <div class="txt">
+          <h3>Registrazione, una volta sola</h3>
+          <p>L'interceptor vale per ogni chiamata fatta con <code>HttpClient</code>. I service, come <code>BookService</code>, restano puliti.</p>
+          <span class="file">src/app/app.config.ts</span>
+        </div>
+<pre><span class="k">export const</span> appConfig: ApplicationConfig = {
+  providers: [
+    provideBrowserGlobalErrorListeners(),
+    provideHttpClient(
+      withInterceptors([errorInterceptor]),
+    ),
+  ],
+};</pre>
+      </li>
+      <li class="step">
+        <div class="txt">
+          <h3>Componente e template</h3>
+          <p>Il componente si limita a salvare il ProblemDetail in un signal: nessun <code>instanceof</code> e nessun parsing. Il template lo mostra.</p>
+          <ul>
+            <li>Azzera <code>error</code> prima di ogni nuova azione.</li>
+            <li>Il blocco <code>@if</code> non deve stare dentro un commento HTML <code>&lt;!-- --&gt;</code>: lì Angular non compila nulla.</li>
+          </ul>
+          <span class="file">src/app/app.ts · app.html</span>
+        </div>
+<pre><span class="k">protected readonly</span> error = signal&lt;ProblemDetail | <span class="k">null</span>&gt;(<span class="k">null</span>);
+
+save() {
+  <span class="k">this</span>.error.set(<span class="k">null</span>);
+  call.subscribe({
+    next: () =&gt; { ... },
+    error: (p: ProblemDetail) =&gt; <span class="k">this</span>.error.set(p),
+  });
+}
+
+<span class="c">&lt;!-- app.html --&gt;</span>
+@if (error(); as problem) {
+  &lt;section class="error" role="alert"&gt;
+    &lt;strong&gt;{{ problem.status }} {{ problem.title }}&lt;/strong&gt;
+    @if (problem.detail) { &lt;p&gt;{{ problem.detail }}&lt;/p&gt; }
+    @for (e of problem.errors ?? []; track e.field) {
+      &lt;p&gt;{{ e.field }}: {{ e.message }}&lt;/p&gt;
+    }
+  &lt;/section&gt;
+}</pre>
+      </li>
+    </ol>
+  </section>
+
+  <section aria-labelledby="h-mappa">
+    <div class="sec-head">
+      <span class="eyebrow">Verifica</span>
+      <h2 id="h-mappa">Ogni scenario, da capo a fondo</h2>
+      <p class="lede">La colonna "origine" indica chi produce la risposta: un handler scritto da te, uno ereditato dalla classe base, oppure l'interceptor quando il backend non risponde.</p>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Scenario</th><th>Eccezione</th><th>Origine</th><th>Stato</th><th>Il riquadro mostra</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>GET /api/books/999</code></td><td><code>BookNotFoundException</code></td><td><span class="origin own">handler tuo</span></td><td><span class="st">404</span></td><td>Libro 999 inesistente</td></tr>
+          <tr><td><code>POST</code> con ISBN già presente</td><td><code>DuplicateIsbnException</code></td><td><span class="origin own">handler tuo</span></td><td><span class="st">409</span></td><td>ISBN … già presente</td></tr>
+          <tr><td><code>PUT</code> con l'ISBN di un altro libro</td><td><code>DataIntegrityViolationException</code></td><td><span class="origin own">rete di sicurezza</span></td><td><span class="st">409</span></td><td>Dati in conflitto</td></tr>
+          <tr><td>ISBN <code>123</code>, titolo vuoto</td><td><code>MethodArgumentNotValidException</code></td><td><span class="origin own">override</span></td><td><span class="st">400</span></td><td>una riga per campo: <code>isbn</code>, <code>title</code></td></tr>
+          <tr><td>JSON malformato</td><td><code>HttpMessageNotReadableException</code></td><td><span class="origin inh">ereditato</span></td><td><span class="st">400</span></td><td>Failed to read request</td></tr>
+          <tr><td><code>GET /api/books/abc</code></td><td><code>MethodArgumentTypeMismatchException</code></td><td><span class="origin inh">ereditato</span></td><td><span class="st">400</span></td><td>tipo del parametro non valido</td></tr>
+          <tr><td>bug imprevisto</td><td>qualsiasi <code>Exception</code></td><td><span class="origin own">ultima istanza</span></td><td><span class="st">500</span></td><td>Errore inatteso (dettagli solo nel log)</td></tr>
+          <tr><td>backend spento</td><td>nessuna: la richiesta non arriva</td><td><span class="origin cli">interceptor</span></td><td><span class="st">0</span></td><td>Server non raggiungibile</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-insidie">
+    <div class="sec-head">
+      <span class="eyebrow">Insidie</span>
+      <h2 id="h-insidie">Dove si sbaglia più spesso</h2>
+    </div>
+    <div class="traps">
+      <div class="trap"><h3>Il client interpreta detail</h3><p>Una regex su "ISBN … già presente" si rompe alla prima riformulazione del testo. Metti <code>isbn</code> in un'estensione e decidi in base a <code>code</code> o a <code>type</code>.</p></div>
+      <div class="trap"><h3>Messaggi interni nella risposta</h3><p>SQL, nomi di tabelle, stack trace, <code>ex.getMessage()</code> di un'eccezione inattesa: vanno nel log, non al client.</p></div>
+      <div class="trap"><h3>Errori fuori dal DispatcherServlet</h3><p>Un'eccezione in un <code>Filter</code> (per esempio Spring Security) non arriva all'advice. La gestisce <code>BasicErrorController</code> su <code>/error</code>, con il JSON classico di Boot.</p></div>
+      <div class="trap"><h3>try/catch nei controller</h3><p>Ogni catch locale è un secondo punto di traduzione, e prima o poi produrrà una forma diversa dal contratto. Lascia risalire l'eccezione.</p></div>
+      <div class="trap"><h3>Test solo sui casi felici</h3><p>Il contratto d'errore fa parte dell'API. Verifica con <code>MockMvcTester</code> stato, <code>application/problem+json</code> e i campi su cui il client decide.</p></div>
+      <div class="trap"><h3>200 con success: false</h3><p>Nasconde l'errore a proxy, cache, monitoraggio e a <code>HttpClient</code>, che chiamerebbe <code>next</code> invece di <code>error</code>.</p></div>
+    </div>
+  </section>
+
+  <footer>Basato sul progetto d'esercizio <code>gestione-eccezioni-spring-boot/basic</code>: CRUD dei libri, H2, backend sulla porta 8082. Riferimenti: RFC 9457 <i>Problem Details for HTTP APIs</i> e Spring Framework Reference, <i>Error Responses</i>.</footer>
+</div>
+</body>
+</html>
