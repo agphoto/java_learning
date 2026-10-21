@@ -1,0 +1,22 @@
+opencollection: 1.0.0
+
+info:
+  name: Gestione eccezioni - API
+  version: "1"
+
+docs:
+  content: |-
+    # Gestione eccezioni - API
+
+    Collection per esercitare il backend dell'argomento (porta 8081): ogni richiesta
+    provoca un comportamento descritto nei capitoli e lo verifica con asserzioni.
+
+    Prerequisito: backend avviato (`./mvnw spring-boot:run` in `backend/`) e ambiente
+    `locale` selezionato.
+  type: text/markdown
+bundled: false
+extensions:
+  bruno:
+    ignore:
+      - node_modules
+      - .git

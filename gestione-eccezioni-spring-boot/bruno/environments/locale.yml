@@ -1,0 +1,12 @@
+name: locale
+variables:
+  - name: baseUrl
+    value: http://localhost:8081
+  - name: utenteUsername
+    value: utente
+  - name: utentePassword
+    value: utente
+  - name: adminUsername
+    value: admin
+  - name: adminPassword
+    value: admin

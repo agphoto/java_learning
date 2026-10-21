@@ -1,0 +1,41 @@
+info:
+  name: Limite prestiti superato
+  type: http
+  seq: 4
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/loans"
+  body:
+    type: json
+    data: |-
+      {
+        "userId": 2,
+        "bookId": 3
+      }
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "422"
+    - expression: res.headers["content-type"]
+      operator: contains
+      value: application/problem+json
+    - expression: res.body.code
+      operator: eq
+      value: LOAN_LIMIT_EXCEEDED
+    - expression: res.body.detail
+      operator: contains
+      value: "3"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  Linus (id 2) ha già 3 prestiti attivi. Il libro 3 è libero, quindi la regola che scatta
+  è il limite e non BOOK_ALREADY_ON_LOAN: l'ordine dei controlli in `LoanService` conta.

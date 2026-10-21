@@ -1,0 +1,13 @@
+info:
+  name: 06 Servizio esterno
+  type: folder
+  seq: 6
+
+request: {}
+
+docs:
+  content: |-
+    `CatalogClient` chiama il catalogo simulato (`/simulated-catalog`, nella stessa
+    applicazione) e traduce ogni guasto in `IntegrationException`. Il parametro
+    `simulate` sceglie la risposta del catalogo: ok, error, unavailable (capitolo 08).
+  type: text/markdown

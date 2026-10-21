@@ -1,0 +1,49 @@
+info:
+  name: Campi non validi
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/books"
+  body:
+    type: json
+    data: |-
+      {
+        "isbn": "123",
+        "title": "",
+        "author": "x"
+      }
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("un errore per ciascun campo non valido, con il codice del vincolo", function () {
+          const errori = res.body.errors.map(e => e.field + ":" + e.code).sort();
+          expect(errori).to.eql(["isbn:Pattern", "title:NotBlank"]);
+        });
+
+        test("il messaggio specifico Pattern.bookRequest.isbn prevale su Pattern", function () {
+          const isbn = res.body.errors.find(e => e.field === "isbn");
+          expect(isbn.message).to.contain("13 cifre");
+        });
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "400"
+    - expression: res.headers["content-type"]
+      operator: contains
+      value: application/problem+json
+    - expression: res.body.code
+      operator: eq
+      value: VALIDATION_FAILED
+    - expression: res.body.errors
+      operator: isArray
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true

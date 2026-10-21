@@ -1,0 +1,15 @@
+info:
+  name: 01 Percorso felice
+  type: folder
+  seq: 1
+
+request: {}
+
+docs:
+  content: |-
+    Le risposte corrette, come termine di paragone per gli errori delle cartelle successive.
+
+    "Crea libro" genera un ISBN casuale; "Presta il libro creato" usa il libro appena creato
+    e l'utente Ada. Ada può avere al massimo 3 prestiti attivi: dalla quarta esecuzione
+    la richiesta riceve 422 LOAN_LIMIT_EXCEEDED. Riavviare il backend ricrea il database.
+  type: text/markdown

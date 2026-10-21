@@ -1,0 +1,12 @@
+info:
+  name: 08 Lingua
+  type: folder
+  seq: 8
+
+request: {}
+
+docs:
+  content: |-
+    `title` e `detail` seguono `Accept-Language`; `code` non cambia mai (capitolo 05).
+    Lingue supportate: it (default) ed en.
+  type: text/markdown

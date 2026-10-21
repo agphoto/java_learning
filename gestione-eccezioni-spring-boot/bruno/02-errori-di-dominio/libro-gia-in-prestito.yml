@@ -1,0 +1,36 @@
+info:
+  name: Libro già in prestito
+  type: http
+  seq: 3
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/loans"
+  body:
+    type: json
+    data: |-
+      {
+        "userId": 1,
+        "bookId": 4
+      }
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "409"
+    - expression: res.headers["content-type"]
+      operator: contains
+      value: application/problem+json
+    - expression: res.body.code
+      operator: eq
+      value: BOOK_ALREADY_ON_LOAN
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: Il libro 4 è in prestito a Linus fin dall'avvio (`data.sql`).

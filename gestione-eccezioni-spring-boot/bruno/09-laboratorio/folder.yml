@@ -1,0 +1,12 @@
+info:
+  name: 09 Laboratorio
+  type: folder
+  seq: 9
+
+request: {}
+
+docs:
+  content: |-
+    Controller fuori dal package `api`, quindi fuori dall'ambito del gestore centrale:
+    servono a osservare il meccanismo di Spring MVC, non il contratto dell'API.
+  type: text/markdown

@@ -1,0 +1,41 @@
+info:
+  name: Crea libro
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/books"
+  body:
+    type: json
+    data: |-
+      {
+        "isbn": "{{isbnNuovo}}",
+        "title": "Libro di prova",
+        "author": "Bruno"
+      }
+
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        // 13 cifre, diverse a ogni esecuzione: evita DUPLICATE_ISBN
+        bru.setVar("isbnNuovo", "979" + String(Date.now()).slice(-10));
+    - type: after-response
+      code: bru.setVar("bookIdNuovo", res.body.id);
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "201"
+    - expression: res.headers.location
+      operator: startsWith
+      value: /api/books/
+    - expression: res.body.id
+      operator: isNumber
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true

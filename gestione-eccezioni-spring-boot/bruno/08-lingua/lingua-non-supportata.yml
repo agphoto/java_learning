@@ -1,0 +1,34 @@
+info:
+  name: Lingua non supportata
+  type: http
+  seq: 2
+
+http:
+  method: GET
+  url: "{{baseUrl}}/api/books/999"
+  headers:
+    - name: Accept-Language
+      value: de
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "404"
+    - expression: res.body.code
+      operator: eq
+      value: BOOK_NOT_FOUND
+    - expression: res.body.title
+      operator: eq
+      value: Libro non trovato
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  Il tedesco non è supportato: si ricade sull'italiano, non sulla lingua del sistema
+  (`spring.messages.fallback-to-system-locale=false`).

@@ -1,0 +1,37 @@
+info:
+  name: JSON troncato
+  type: http
+  seq: 4
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/books"
+  headers:
+    - name: Content-Type
+      value: application/json
+  body:
+    type: text
+    data: '{"isbn":'
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "400"
+    - expression: res.headers["content-type"]
+      operator: contains
+      value: application/problem+json
+    - expression: res.body.code
+      operator: eq
+      value: MALFORMED_REQUEST
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  Body testuale con Content-Type JSON: Bruno non tenta di interpretarlo e lo invia così
+  com'è. Jackson fallisce → `HttpMessageNotReadableException`.

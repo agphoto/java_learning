@@ -1,0 +1,37 @@
+info:
+  name: Utente inesistente
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/loans"
+  body:
+    type: json
+    data: |-
+      {
+        "userId": 99,
+        "bookId": 1
+      }
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "404"
+    - expression: res.headers["content-type"]
+      operator: contains
+      value: application/problem+json
+    - expression: res.body.code
+      operator: eq
+      value: USER_NOT_FOUND
+    - expression: res.body.detail
+      operator: contains
+      value: "99"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true

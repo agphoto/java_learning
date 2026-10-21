@@ -1,0 +1,39 @@
+info:
+  name: ISBN duplicato
+  type: http
+  seq: 5
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/books"
+  body:
+    type: json
+    data: |-
+      {
+        "isbn": "9788804668237",
+        "title": "Copia",
+        "author": "Qualcuno"
+      }
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "409"
+    - expression: res.headers["content-type"]
+      operator: contains
+      value: application/problem+json
+    - expression: res.body.code
+      operator: eq
+      value: DUPLICATE_ISBN
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  Una `DataIntegrityViolationException` di persistenza, non un'eccezione di dominio:
+  il gestore la riconosce e la traduce in un codice di catalogo (capitolo 07).

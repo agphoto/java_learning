@@ -1,0 +1,12 @@
+info:
+  name: 02 Errori di dominio
+  type: folder
+  seq: 2
+
+request: {}
+
+docs:
+  content: |-
+    Eccezioni applicative (`ApplicationException`) tradotte dal `GlobalExceptionHandler`
+    in `ProblemDetail` (capitoli 03 e 04). Il `code` è il nome della costante di `ErrorCode`.
+  type: text/markdown

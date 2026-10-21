@@ -109,7 +109,26 @@ curl -s localhost:8081/laboratorio/capitolo03/state
 
 Aggiungendo `| jq` si ottiene un output leggibile.
 
-### 5. Test
+### 5. Ogni errore con Bruno
+
+La cartella `bruno/` è una collection di [Bruno](https://www.usebruno.com/) (formato
+YAML OpenCollection, Bruno 4.x) con le stesse richieste, più alcuni casi di confine
+(firewall, `Content-Type` non supportato, lingua non supportata, laboratorio del
+capitolo 08). Ogni richiesta verifica la risposta con asserzioni sul `code`, sullo
+stato e sul `Content-Type`, e la documentazione di ogni cartella rimanda al capitolo.
+
+- **Bruno desktop**: *Open Collection* → cartella `bruno/`, ambiente `locale`.
+- **Bruno CLI**, con il backend avviato:
+
+```bash
+cd bruno
+npx @usebruno/cli run -r --env locale
+```
+
+Il percorso felice crea un libro e lo presta ad Ada: dopo tre esecuzioni Ada è al
+limite di prestiti e quella richiesta riceve 422. Riavviare il backend ricrea il database.
+
+### 6. Test
 
 ```bash
 cd backend && ./mvnw test                     # backend: JUnit + MockMvcTester

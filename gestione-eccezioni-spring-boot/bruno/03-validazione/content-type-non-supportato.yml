@@ -1,0 +1,39 @@
+info:
+  name: Content-Type non supportato
+  type: http
+  seq: 5
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/books"
+  body:
+    type: text
+    data: ciao
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "415"
+    - expression: res.headers["content-type"]
+      operator: contains
+      value: application/problem+json
+    - expression: res.headers.accept
+      operator: contains
+      value: application/json
+    - expression: res.body.code
+      operator: eq
+      value: HTTP_415
+    - expression: res.body.type
+      operator: isUndefined
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  Eccezione standard senza codice di catalogo: `code` vale `HTTP_<stato>` e i testi
+  vengono dalle chiavi `problemDetail.*` di `messages.properties` (capitolo 05).

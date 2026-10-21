@@ -1,0 +1,38 @@
+info:
+  name: Presta il libro creato
+  type: http
+  seq: 3
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/loans"
+  body:
+    type: json
+    data: |-
+      {
+        "userId": 1,
+        "bookId": {{bookIdNuovo}}
+      }
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "201"
+    - expression: res.headers.location
+      operator: startsWith
+      value: /api/loans/
+    - expression: res.body.userId
+      operator: eq
+      value: "1"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  Dipende da "Crea libro" (variabile `bookIdNuovo`). Vedi il limite dei 3 prestiti di Ada
+  nella documentazione della cartella.

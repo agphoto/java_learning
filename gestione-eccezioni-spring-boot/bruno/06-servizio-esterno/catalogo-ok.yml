@@ -1,0 +1,28 @@
+info:
+  name: Catalogo disponibile
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: "{{baseUrl}}/api/books/1/catalog-info?simulate=ok"
+  params:
+    - name: simulate
+      value: ok
+      type: query
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "200"
+    - expression: res.body.isbn
+      operator: eq
+      value: '"9788804668237"'
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true

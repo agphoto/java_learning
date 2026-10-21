@@ -1,0 +1,12 @@
+info:
+  name: 07 Errore inatteso
+  type: folder
+  seq: 7
+
+request: {}
+
+docs:
+  content: |-
+    Il gestore di ultima istanza (`@ExceptionHandler(Exception.class)`): risposta
+    generica, nessun dettaglio interno, `traceId` per ritrovare l'errore nei log (capitolo 09).
+  type: text/markdown

@@ -1,0 +1,13 @@
+info:
+  name: 05 Sicurezza
+  type: folder
+  seq: 5
+
+request: {}
+
+docs:
+  content: |-
+    `/api/admin/**` richiede il ruolo ADMIN, con HTTP Basic. 401 e 403 nascono nei filtri
+    di Spring Security, fuori da Spring MVC: li scrivono l'entry point e l'access denied
+    handler dedicati, con lo stesso contratto `ProblemDetail` (capitolo 08).
+  type: text/markdown

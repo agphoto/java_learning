@@ -1,0 +1,28 @@
+info:
+  name: Cap. 08 - CompletableFuture fallito
+  type: http
+  seq: 5
+
+http:
+  method: GET
+  url: "{{baseUrl}}/laboratorio/capitolo08/future"
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "503"
+    - expression: res.body
+      operator: eq
+      value: "\"gestito dall'advice: future fallito\""
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  L'eccezione del future, sbloccata da `CompletionException`, rientra nella catena dei
+  resolver al momento della ripresa della richiesta.

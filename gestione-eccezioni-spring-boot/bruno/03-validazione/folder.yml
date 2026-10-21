@@ -1,0 +1,12 @@
+info:
+  name: 03 Validazione e richieste malformate
+  type: folder
+  seq: 3
+
+request: {}
+
+docs:
+  content: |-
+    Errori del framework intercettati da `ResponseEntityExceptionHandler` e riportati
+    al catalogo dei codici (capitolo 06).
+  type: text/markdown

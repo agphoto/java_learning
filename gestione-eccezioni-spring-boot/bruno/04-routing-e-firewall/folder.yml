@@ -1,0 +1,13 @@
+info:
+  name: 04 Routing e firewall
+  type: folder
+  seq: 4
+
+request: {}
+
+docs:
+  content: |-
+    Errori che nascono prima del controller: nessun handler per l'URL o per il metodo
+    (`RoutingErrorAdvice`) e URL rifiutati dallo `StrictHttpFirewall` di Spring Security
+    (`RequestRejectedHandler`). Capitolo 08.
+  type: text/markdown
