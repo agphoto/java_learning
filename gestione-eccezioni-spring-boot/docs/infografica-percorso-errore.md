@@ -12,7 +12,7 @@ Quando il service lancia `BookNotFoundException`, nessun controller e nessun com
 | 2 | Backend | Controller | nessun `try/catch` | l'eccezione risale |
 | 3 | Backend | DispatcherServlet | `ExceptionHandlerExceptionResolver` | cerca un `@ExceptionHandler` |
 | 4 | Backend | Advice | `GlobalExceptionHandler` | eccezione → stato + `ProblemDetail` |
-| 5 | **HTTP** | Filo | `404 application/problem+json` | il contratto sul filo |
+| 5 | **HTTP** | Risposta | `404 application/problem+json` | il contratto con il client |
 | 6 | GUI | HttpClient | `HttpErrorResponse` | tipo generico di Angular |
 | 7 | GUI | Interceptor | `errorInterceptor` | `HttpErrorResponse` → `ProblemDetail` |
 | 8 | GUI | Componente | `error: p => error.set(p)` | un signal, nessun parsing |
@@ -142,7 +142,7 @@ ProblemDetail handleUnexpected(Exception ex) {
 
 ## Il contratto, e chi legge cosa
 
-*Sul filo · `application/problem+json`*
+*Corpo della risposta · `application/problem+json`*
 
 ```json
 {

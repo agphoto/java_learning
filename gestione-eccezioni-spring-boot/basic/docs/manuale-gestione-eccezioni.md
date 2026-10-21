@@ -18,7 +18,8 @@ dal backend in esecuzione.
 9. [Logging](#9-logging)
 10. [Cosa vede il client](#10-cosa-vede-il-client)
 11. [Checklist: aggiungere un nuovo errore](#11-checklist-aggiungere-un-nuovo-errore)
-12. [Il flusso operativo](#12-il-flusso-operativo)
+12. [Il percorso senza eccezioni](#12-il-percorso-senza-eccezioni)
+13. [Il flusso operativo](#13-il-flusso-operativo)
 
 ---
 
@@ -260,7 +261,7 @@ problem.setType(URI.create("https://java-learning.local/errors/book-not-found"))
 problem.setTitle("Libro inesistente");
 problem.setProperty("code", "BOOK_NOT_FOUND");
 problem.setProperty("bookId", 999L);
-// instance: non serve, lo aggiunge Spring con il path della richiesta
+// instance: non serve, lo aggiunge Spring con il path della richiesta (vedi sotto)
 ```
 
 Nel progetto queste righe sono raccolte in due helper dell'advice, così ogni handler si
@@ -287,7 +288,7 @@ primo livello**: Spring applica a `ProblemDetail` un mixin Jackson con `@JsonAny
 sulla mappa e `@JsonInclude(NON_EMPTY)` sui campi.
 
 ```java
-// in memoria                                    // sul filo
+// in memoria                                    // nel JSON
 type       = https://.../book-not-found          {
 title      = Libro inesistente                     "type": "https://.../book-not-found",
 status     = 404                                   "title": "Libro inesistente",
@@ -298,6 +299,48 @@ properties = {code=BOOK_NOT_FOUND, bookId=999}     "instance": "/api/books/999",
                                                    "bookId": 999
                                                  }
 ```
+
+### Chi valorizza `instance`
+
+Nessun handler lo imposta: lo fa Spring MVC **dopo** che l'handler ha restituito il
+`ProblemDetail`, mentre scrive la risposta. Dentro `handleNotFound` (nel debugger o in un
+log) `instance` è quindi `null`, ed è normale: diventa `/api/books/999` solo nella risposta HTTP.
+
+Il punto esatto dipende dal tipo di ritorno dell'`@ExceptionHandler` (sorgenti di
+spring-webmvc 7.0):
+
+| Tipo di ritorno | Chi lo gestisce | Esempio nel progetto |
+|---|---|---|
+| `ProblemDetail` | `RequestResponseBodyMethodProcessor.handleReturnValue` | `handleNotFound`, `handleDuplicateIsbn`, `handleUnexpected` |
+| `ResponseEntity<ProblemDetail>`, `ErrorResponse` | `HttpEntityMethodProcessor.handleReturnValue` | gli override `handleXxx` (`ResponseEntity<Object>`), la variante con `Retry-After` |
+
+La logica è la stessa in entrambi:
+
+```java
+// RequestResponseBodyMethodProcessor.handleReturnValue
+if (returnValue instanceof ProblemDetail detail) {
+	outputMessage.setStatusCode(HttpStatusCode.valueOf(detail.getStatus()));   // lo status HTTP
+	if (detail.getInstance() == null) {
+		URI path = URI.create(inputMessage.getServletRequest().getRequestURI());
+		detail.setInstance(path);                                              // instance = path
+	}
+	invokeErrorResponseInterceptors(detail, null);
+}
+writeWithMessageConverters(returnValue, returnType, inputMessage, outputMessage);
+```
+
+- Il valore è `getRequestURI()`: solo il path, **senza** query string.
+- Spring lo scrive **solo se è ancora `null`**: un `problem.setInstance(...)` nell'handler
+  (per esempio un URI con un id di correlazione) viene rispettato.
+- È lo stesso punto che imposta lo status HTTP da `detail.getStatus()`: per questo non
+  serve `@ResponseStatus`.
+- `HttpEntityMethodProcessor` aggiunge un warning nel log se lo status della
+  `ResponseEntity` non coincide con `detail.getStatus()`.
+
+Se invece `instance` manca **nella risposta HTTP**, l'eccezione non è passata da un
+`@ExceptionHandler` di MVC (per esempio è stata lanciata in un filtro ed è finita su
+`/error` di Spring Boot), oppure il test invoca direttamente il metodo dell'handler
+anziché passare da MockMvc.
 
 ---
 
@@ -522,7 +565,7 @@ Si logga **una volta**, nell'advice: non nel service prima di rilanciare.
 
 ## 10. Cosa vede il client
 
-### Sul filo
+### La risposta HTTP
 
 Risposte reali del backend (`Accept-Language: it`):
 
@@ -703,7 +746,178 @@ Esempio: impedire la cancellazione di un libro in prestito (409).
 
 ---
 
-## 12. Il flusso operativo
+## 12. Il percorso senza eccezioni
+
+Per capire dove si innesta l'advice conviene conoscere il caso normale: un metodo del
+controller che termina senza lanciare. Riferimento: sorgenti di spring-webmvc 7.0.
+
+### Dalla chiamata al corpo della risposta
+
+```
+Tomcat → filtri → DispatcherServlet.doDispatch
+  → RequestMappingHandlerMapping      trova BookController#get
+  → RequestMappingHandlerAdapter      risolve gli argomenti (@PathVariable, @RequestBody...)
+  → ServletInvocableHandlerMethod.invokeAndHandle
+       invoca il metodo → returnValue
+       setResponseStatus (se c'è @ResponseStatus)
+       returnValueHandlers.handleReturnValue(returnValue, ...)
+  → return value handler adatto al tipo di ritorno
+  → AbstractMessageConverterMethodProcessor.writeWithMessageConverters
+       content negotiation → HttpMessageConverter (Jackson) → corpo della risposta
+  → mavContainer.requestHandled = true → nessuna View da renderizzare
+```
+
+Scritto il corpo, il processor segna la richiesta come gestita:
+`RequestMappingHandlerAdapter` restituisce un `ModelAndView` nullo e il
+`DispatcherServlet` salta il rendering, eredità dei controller MVC classici.
+
+### Chi gestisce il valore di ritorno
+
+L'adapter tiene una lista ordinata di circa venti `HandlerMethodReturnValueHandler`;
+vince il primo il cui `supportsReturnType` risponde `true`. Nel progetto ne intervengono
+due:
+
+| Metodo | Ritorno | Handler | Status | Header | Corpo |
+|---|---|---|---|---|---|
+| `list()` | `List<BookResponse>` | `RequestResponseBodyMethodProcessor` | 200 (default del container) | `Content-Type` | array JSON |
+| `get(id)`, `update(...)` | `BookResponse` | `RequestResponseBodyMethodProcessor` | 200 | `Content-Type` | oggetto JSON |
+| `create(...)` | `ResponseEntity<BookResponse>` | `ResponseEntityReturnValueHandler` → `HttpEntityMethodProcessor` | 201, da `created(...)` | `Location`, `Content-Type` | oggetto JSON |
+| `delete(id)` | `ResponseEntity<Void>` | idem | 204, da `noContent()` | nessuno | nessuno |
+
+- **`RequestResponseBodyMethodProcessor`** si attiva perché `@RestController` porta
+  `@ResponseBody` a livello di classe (`supportsReturnType` lo cerca sulla classe o sul
+  metodo). Non imposta lo status: resta il 200 della `HttpServletResponse`. Per un altro
+  status senza `ResponseEntity` si usa `@ResponseStatus`, applicato da
+  `setResponseStatus` prima della scrittura.
+- **`HttpEntityMethodProcessor`** copia nella risposta status e header della
+  `ResponseEntity`, poi scrive il corpo; senza corpo (204) fa solo `flush()`. In Spring 7
+  ci si arriva tramite `ResponseEntityReturnValueHandler`, una facciata che smista sul
+  gestore degli stream se il corpo è un `ResponseBodyEmitter` e altrimenti delega.
+- Lo stesso processor gestisce i **GET condizionali**: se la `ResponseEntity` porta
+  `ETag` o `Last-Modified` e la richiesta ha `If-None-Match`/`If-Modified-Since`
+  corrispondenti, risponde 304 senza corpo.
+
+### Content negotiation e scrittura
+
+`writeWithMessageConverters`, comune ai due processor:
+
+1. se un `Content-Type` concreto è già impostato (per esempio da una `ResponseEntity`),
+   usa quello;
+2. altrimenti calcola i tipi **accettabili** (header `Accept`, `*/*` se manca) e quelli
+   **producibili** (ciò che i converter registrati sanno scrivere per il tipo, o
+   `produces` del mapping);
+3. li interseca e li ordina per specificità; intersezione vuota →
+   `HttpMediaTypeNotAcceptableException` → 406. È il punto in cui il percorso "senza
+   eccezioni" può ancora diventare un errore;
+4. prende il primo converter con `canWrite(tipo, mediaType)` vero;
+5. invoca le `ResponseBodyAdvice` (`beforeBodyWrite`): l'ultimo aggancio per modificare
+   il corpo, per esempio per avvolgerlo in un envelope;
+6. `converter.write(...)` serializza direttamente sull'output stream.
+
+### La serializzazione: Jackson 3
+
+Con Boot 4.1 il converter è **`JacksonJsonHttpMessageConverter`**, su Jackson 3
+(`tools.jackson`); `MappingJackson2HttpMessageConverter` esiste ancora in spring-web 7 ma è
+deprecato. Boot lo configura con il `JsonMapper` autoconfigurato, personalizzabile con
+`spring.jackson.*`. Di un `record` come `BookResponse` Jackson usa gli accessor dei
+componenti: i campi escono nell'ordine di dichiarazione (`id, isbn, title, author`).
+
+Insidia del progetto: con `spring.jpa.open-in-view=false` la sessione Hibernate è già
+chiusa quando il controller esegue `BookResponse.from(book)`. Oggi `Book` ha solo
+attributi semplici; se il DTO leggesse un'associazione lazy si avrebbe una
+`LazyInitializationException`, cioè un 500 da `handleUnexpected`. Mappare il DTO dentro
+il service evita il problema alla radice.
+
+### Le risposte HTTP reali
+
+Risposte reali del backend:
+
+```http
+GET /api/books
+
+HTTP/1.1 200
+Content-Type: application/json
+Content-Length: 347
+
+[{"id":1,"isbn":"9788804668237","title":"Il nome della rosa","author":"Umberto Eco"},
+ {"id":2,"isbn":"9788806219352","title":"Se questo è un uomo","author":"Primo Levi"},
+ ...]
+```
+
+```http
+GET /api/books/1
+
+HTTP/1.1 200
+Content-Type: application/json
+Content-Length: 83
+
+{"id":1,"isbn":"9788804668237","title":"Il nome della rosa","author":"Umberto Eco"}
+```
+
+```http
+POST /api/books   {"isbn":"9788817050487","title":"Le città invisibili","author":"Italo Calvino"}
+
+HTTP/1.1 201
+Location: /api/books/5
+Content-Type: application/json
+Transfer-Encoding: chunked
+
+{"id":5,"isbn":"9788817050487","title":"Le città invisibili","author":"Italo Calvino"}
+```
+
+```http
+PUT /api/books/1   {"isbn":"9788804668237","title":"Titolo aggiornato","author":"Autore"}
+
+HTTP/1.1 200
+Content-Type: application/json
+Content-Length: 77
+
+{"id":1,"isbn":"9788804668237","title":"Titolo aggiornato","author":"Autore"}
+```
+
+```http
+DELETE /api/books/2
+
+HTTP/1.1 204
+```
+
+Il 204 non ha né corpo né `Content-Type`: `ResponseEntity<Void>` non passa dai converter.
+
+La content negotiation fallita, invece, esce come errore standard di Spring MVC:
+
+```http
+GET /api/books/1
+Accept: application/xml
+
+HTTP/1.1 406
+Accept: application/json, application/*+json
+Content-Type: application/problem+json
+
+{"detail":"Acceptable representations: [application/json, application/*+json].",
+ "instance":"/api/books/1","status":406,"title":"Not Acceptable"}
+```
+
+Nessun converter sa scrivere XML (nel classpath non c'è `jackson-dataformat-xml`); i
+producibili sono i soli tipi JSON, elencati anche nell'header `Accept` della risposta.
+Senza override in `GlobalExceptionHandler` il problem non ha `type` né `code` (§10).
+
+### Successo ed errore: la stessa pipeline
+
+| | Successo (`get`) | Errore (`handleNotFound`) |
+|---|---|---|
+| Chi invoca il metodo | `RequestMappingHandlerAdapter` | `ExceptionHandlerExceptionResolver` |
+| Return value handler | `RequestResponseBodyMethodProcessor` | `RequestResponseBodyMethodProcessor` |
+| Status | 200 di default | da `detail.getStatus()` |
+| `instance` | — | valorizzato con il path (§6) |
+| Media type | `application/json` | `application/problem+json` |
+| Serializzazione | `JacksonJsonHttpMessageConverter` | stesso converter, più il mixin per le estensioni |
+
+L'advice non è un canale separato: è un secondo "controller", invocato al posto del
+primo, la cui risposta percorre la stessa pipeline.
+
+---
+
+## 13. Il flusso operativo
 
 ### Dalla richiesta alla risposta
 
@@ -736,7 +950,7 @@ flowchart TD
     H2 & H3 --> HI["handleExceptionInternal"]
     H1 & H4 & HI --> P["ProblemDetail"]
 
-    P --> W["HttpEntityMethodProcessor<br/>status da getStatus(), instance = path"]
+    P --> W["RequestResponseBodyMethodProcessor / HttpEntityMethodProcessor<br/>status da getStatus(), instance = path"]
     W --> J["Jackson + mixin<br/>estensioni al primo livello"]
     J -->|"4xx / 5xx<br/>application/problem+json"| I["errorInterceptor<br/>HttpErrorResponse → ProblemDetail"]
     OK --> CMP
